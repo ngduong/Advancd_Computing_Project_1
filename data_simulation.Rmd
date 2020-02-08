@@ -98,7 +98,7 @@ sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wb
   
 }
 
-data_test = sim_data(200)
+data_test = sim_data(1000)
 
 ```
 
