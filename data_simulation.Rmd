@@ -33,7 +33,13 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
 n_sample = 1000 # fix sample size
 
-maybe mean should be not only 0
+n_parameter and prop_strong may be changed.
+
+Default of correlation is set to be 0.3, maybe it should be other number like 0.5.
+
+Default of coef_strong is 2.
+
+X follows N(0,1).
 
 ```{r}
 set.seed(12345)
