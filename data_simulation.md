@@ -1,48 +1,22 @@
----
-title: "Simulation"
-author: "Qi Yuchen"
-date: "2020/2/7"
-output: github_document
----
-
-```{r setup, include=FALSE}
-library(tidyverse)
-library(MASS)
-library(matrixcalc)
-
-knitr::opts_chunk$set(
-	echo = TRUE,
-	warning = FALSE,
-	fig.width = 8, 
-  fig.height = 6,
-  out.width = "90%"
-)
-
-options(
-  ggplot2.continuous.colour = "viridis",
-  ggplot2.continuous.fill = "viridis"
-)
-
-scale_colour_discrete = scale_colour_viridis_d
-scale_fill_discrete = scale_fill_viridis_d
-
-theme_set(theme_minimal() + theme(legend.position = "bottom"))
-```
-
+Simulation
+================
+Qi Yuchen
+2020/2/7
 
 # Generate data
 
-n_sample = 1000 # fix sample size
+n\_sample = 1000 \# fix sample size
 
-n_parameter and prop_strong may be changed.
+n\_parameter and prop\_strong may be changed.
 
-Default of correlation is set to be 0.3, maybe it should be other number like 0.5.
+Default of correlation is set to be 0.3, maybe it should be other number
+like 0.5.
 
-Default of coef_strong is 2.
+Default of coef\_strong is 2.
 
 X follows N(0,1).
 
-```{r}
+``` r
 set.seed(12345)
 
 sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.30, coef_strong = 2) {
@@ -100,6 +74,4 @@ sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wb
 }
 
 data_test = sim_data(1000)
-
 ```
-
