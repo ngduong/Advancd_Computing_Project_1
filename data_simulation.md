@@ -12,14 +12,17 @@ n\_parameter and prop\_strong may be changed.
 Default of correlation is set to be 0.3, maybe it should be other number
 like 0.5.
 
-Default of coef\_strong is 2.
+Default of coef\_strong is 5.
 
 X follows N(0,1).
 
 ``` r
-set.seed(12345)
+sim_beta_strong = function(n_strong, coef_strong){
+  rep(coef_strong, n_strong) + runif(n_strong, min = 0, max = coef_strong)
+}
 
-sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.30, coef_strong = 2) {
+
+sim_data = function(n_sample = 1000, n_parameter = 50, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.30, coef_strong = 5) {
   # Numbers of four signals
   n_strong = as.integer(n_parameter * prop_strong) # strong
   n_wbc = as.integer(n_parameter * prop_wbc) # weak but correlated
@@ -48,9 +51,9 @@ sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wb
   X = mvrnorm(n = n_sample, mu = rep(0, n_parameter), Sigma = cor_matrix) # var = 1, correlation = covariance
   
   beta = c(
-    rep(coef_strong, n_strong),
-    rep(bound/2, n_wai), 
-    rep(bound/2, n_wbc),
+    sim_beta_strong(n_strong, coef_strong),
+    runif(min = bound/2, max = bound, n = n_wai), 
+    runif(min = bound/2, max = bound, n = n_wbc),
     rep(0, n_null) 
   )
   
@@ -69,9 +72,38 @@ sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wb
    data = data %>% 
      dplyr::select(Y, everything())
 
-  return(data)
+  list(beta = beta, 
+       correlation = cor,
+       n_parameter = n_parameter,
+       prop_strong = prop_strong,
+       prop_wbc = prop_wbc, 
+       prop_wai = prop_wbc,
+       n_strong = n_strong,
+       n_wai = n_wai,
+       n_wbc = n_wbc,
+       data = data
+       )
   
 }
 
 data_test = sim_data(1000)
+```
+
+# Vary the amount of n\_parameter 10, 20, …, 90 for prop\_strong = 0.1, prop\_wbc = 0.2, prop\_wai = 0.2, 30 samples for each
+
+``` r
+data_9_multi_30 = vector("list", length = 9)
+
+for (i in 1:9) {
+  num_parameter = 10*i
+  
+  output = vector("list", length = 30)
+  
+  for (j in 1:30) {
+  output[[j]] =  sim_data(n_parameter = num_parameter)
+  }
+  
+  data_9_multi_30[[i]] = output
+
+}
 ```
