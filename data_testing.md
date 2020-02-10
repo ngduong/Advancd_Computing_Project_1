@@ -1,21 +1,30 @@
----
-title: "data_testing"
-author: "Ngoc Duong - nqd2000"
-date: "2/8/2020"
-output: github_document
-editor_options: 
-  chunk_output_type: console
----
+data\_testing
+================
+Ngoc Duong - nqd2000
+2/8/2020
 
-```{r setup, echo = FALSE}
-library(tidyverse)
-library(MASS)
-library(matrixcalc)
-library(ggplot2)
-```
+    ## ── Attaching packages ──────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──
 
-Write function to simulate dataset with 3 kinds of given predictors + null predictors
-```{r}
+    ## ✔ ggplot2 3.2.1     ✔ purrr   0.3.3
+    ## ✔ tibble  2.1.3     ✔ dplyr   0.8.3
+    ## ✔ tidyr   1.0.0     ✔ stringr 1.4.0
+    ## ✔ readr   1.3.1     ✔ forcats 0.4.0
+
+    ## ── Conflicts ─────────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+    ## ✖ dplyr::filter() masks stats::filter()
+    ## ✖ dplyr::lag()    masks stats::lag()
+
+    ## 
+    ## Attaching package: 'MASS'
+
+    ## The following object is masked from 'package:dplyr':
+    ## 
+    ##     select
+
+Write function to simulate dataset with 3 kinds of given predictors +
+null predictors
+
+``` r
 sim_beta_strong = function(n_strong, coef_strong){
   rep(coef_strong, n_strong) + runif(n_strong, min = 0, max = coef_strong)
 }
@@ -72,11 +81,11 @@ sim_data = function(n_parameter, n_sample, prop_strong = 0.1, prop_wbc = 0.2, pr
    data = data %>% 
      dplyr::select(Y, everything())
 }
-
 ```
 
 Function implementing forward selection method using AIC as criterion
-```{r}
+
+``` r
 forward.aic.lm = function(df) {
   null.lm = lm(Y ~ 1, data = df)
   full.lm = lm(Y ~ ., data = df)
@@ -90,14 +99,12 @@ forward.aic.lm = function(df) {
 }
 ```
 
+Write function to calculate: 1) how many strong predictors are selected
+by model 2) how many percent of strong predictors are selected by model
+3) how many wbi and wac predictors are missed my the model 4) how many
+percent of wbi and wac predictors are missed my the model
 
-Write function to calculate:
-1) how many strong predictors are selected by model
-2) how many percent of strong predictors are selected by model
-3) how many wbi and wac predictors are missed my the model 
-4) how many percent of wbi and wac predictors are missed my the model 
-
-```{r}
+``` r
 predictors.analysis = function(model_coeff, n_parameter,
                                prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2) {
   
@@ -119,14 +126,12 @@ predictors.analysis = function(model_coeff, n_parameter,
     prop_null = round(n_null_selected/n_null,2)
   ))
 }
-
 ```
 
+Scenario 1: while changing number of parameters, simulate the data 100
+times for each parameter
 
-
-
-Scenario 1: while changing number of parameters, simulate the data 100 times for each parameter
-```{r}
+``` r
 #key parameters
 forward_summary = NULL
 n_parameter = c(10,20,30,40,50)
@@ -155,10 +160,10 @@ forward_summary_final = forward_summary %>%
          null_prfm = mean(prop_null))
 ```
 
-Visualization with all simulations:
-1) How many percent of variables are selected by method, on average?
+Visualization with all simulations: 1) How many percent of variables are
+selected by method, on average?
 
-```{r 1}
+``` r
 forward_summary_final %>% ggplot(aes(x = n_parameter_total))+
  geom_point(aes(y=strong_prfm*100, color="prop_strong")) +
  geom_point(aes(y=wai_prfm*100, color="prop_wai")) + 
@@ -179,7 +184,11 @@ forward_summary_final %>% ggplot(aes(x = n_parameter_total))+
           legend.position = "bottom") +
   scale_x_discrete(limits=c("prop_strong", "prop_wai", "prop_wbc", "prop_null")) + 
   scale_color_discrete(name = "Signal Type", labels = c("Strong", "WAI", "WBC", "Null")) 
+```
 
+![](data_testing_files/figure-gfm/1-1.png)<!-- -->
+
+``` r
 #represent the same type of info using different visualization (but does not require taking mean)
 forward_summary_final %>% ggplot(aes()) +
 geom_density(aes(x = prop_strong, color = "Strong", alpha = 0.20)) +
@@ -190,27 +199,22 @@ geom_density(aes(x=prop_null, color = "Null", alpha=0.20)) +
     theme(legend.title=element_blank())
 ```
 
+![](data_testing_files/figure-gfm/1-2.png)<!-- -->
 
-2) Number of strong predictors changed by more than 10%, expressed in terms of how many weak predictors are missing
-n_parameter = c(10,20,30,40,50)
-n_sim = 30
-n_sample = 1000
+2)  Number of strong predictors changed by more than 10%, expressed in
+    terms of how many weak predictors are missing n\_parameter =
+    c(10,20,30,40,50) n\_sim = 30 n\_sample = 1000
 
-beta.analysis = function(betas){
-  #calculate the number of wbc and wai missing
-  
-  #Calculate MSE of the strong predictors 
-  
+beta.analysis = function(betas){ \#calculate the number of wbc and wai
+missing
+
+\#Calculate MSE of the strong predictors
+
 }
 
-for(i in n_parameter){
-    for (j in 1:n_sim) {
-      df = sim_data(n_parameter = i, n_sample = n_sample)
-    create the forward model
-    forward_lm = forward.aic.lm(df)
-    }     
+for(i in n\_parameter){ for (j in 1:n\_sim) { df =
+sim\_data(n\_parameter = i, n\_sample = n\_sample) create the forward
+model forward\_lm = forward.aic.lm(df) }
 
-
-Function to assess variance and bias of strong predictors' coefficients with respect to the number of missing weak variables
-
-
+Function to assess variance and bias of strong predictors’ coefficients
+with respect to the number of missing weak variables
