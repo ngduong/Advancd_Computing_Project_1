@@ -15,7 +15,6 @@ library(ggplot2)
 ```
 
 ```{r}
-
 sim_beta_strong = function(n_strong, coef_strong){
   rep(coef_strong, n_strong) + runif(n_strong, min = 0, max = coef_strong)
 }
@@ -91,7 +90,7 @@ data_test = sim_data(1000)
 ```
 
 
-#Vary the amount of n_parameter 10, 20, ..., 90 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 30 samples for each
+# Vary the amount of n_parameter 10, 20, ..., 90 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 30 samples for each
 
 ```{r}
 data_9_multi_30 = vector("list", length = 9)
@@ -109,6 +108,8 @@ for (i in 1:9) {
 
 }
 ```
+
+
 
 #modeling using LASSO
 ```{r}
