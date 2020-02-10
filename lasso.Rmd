@@ -90,7 +90,7 @@ data_test = sim_data(1000)
 ```
 
 
-# Vary the amount of n_parameter 10, 20, ..., 90 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 30 samples for each
+#Vary the amount of n_parameter 10, 20, ..., 90 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 30 samples for each
 
 ```{r}
 data_9_multi_30 = vector("list", length = 9)
@@ -197,28 +197,5 @@ df %>%
   scale_color_discrete(name = "Signal Type", labels = c("Strong", "WAI", "WBC", "Null")) 
 ```
 
-```{r}
-#calculate the ratio of number of strong signals and weak signals in true model
-#we pre set the prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2
-ratio_true= 0.1/0.4
 
-df$performance = round(df$ratio_strong_weak/ratio_true, digits = 2)
-performance = df %>% 
-  dplyr::select(n_parameter_total, performance) %>% 
-  subset(performance != Inf)
-```
-
-```{r}
-#plot of the performance against # of parameters
-performance %>%
-  group_by(n_parameter_total) %>% 
-  summarize(mean = mean(performance)) %>% 
-  ggplot(aes(x = n_parameter_total, y = mean))+
-  geom_point()+
-  geom_line()+
-  labs(title = "ratio of ratio of number of strong signals and weak signals",
-       y = "ratio ",
-       x = "Number of (pre-set) total parameters")+
-theme_bw() 
-```
 
