@@ -1,54 +1,21 @@
 ---
-title: "Simulation"
-author: "Qi Yuchen"
-date: "2020/2/7"
-output: github_document
+title: "lasso"
+author: 'Crystal Li'
+output: html_document
 ---
 
-```{r setup, echo = FALSE}
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(MASS)
 library(matrixcalc)
-<<<<<<< HEAD
-=======
 library(glmnet)
 library(dplyr)
->>>>>>> fc5b97c939b5aa7b4d3914e3698cee189b958ab0
 library(ggplot2)
-
-knitr::opts_chunk$set(
-	echo = TRUE,
-	warning = FALSE,
-	fig.width = 8, 
-  fig.height = 6,
-  out.width = "90%"
-)
-
-options(
-  ggplot2.continuous.colour = "viridis",
-  ggplot2.continuous.fill = "viridis"
-)
-
-scale_colour_discrete = scale_colour_viridis_d
-scale_fill_discrete = scale_fill_viridis_d
-
-theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
-
-# Generate data
-
-n_sample = 1000 # fix sample size
-
-n_parameter and prop_strong may be changed.
-
-Default of correlation is set to be 0.3, maybe it should be other number like 0.5.
-
-Default of coef_strong is 5.
-
-X follows N(0,1).
-
 ```{r}
+
 sim_beta_strong = function(n_strong, coef_strong){
   rep(coef_strong, n_strong) + runif(n_strong, min = 0, max = coef_strong)
 }
@@ -141,5 +108,83 @@ for (i in 1:9) {
   data_9_multi_30[[i]] = output
 
 }
+```
+
+#modeling using LASSO
+```{r}
+# create a list to store all the non_zero parameters in each fit regression
+para = vector("list", length = 5)
+for (i in 1:5) {
+  output_para = vector("list", length = 30)
+  output_fit = vector("list", length = 30)
+  for (j in 1:30) {
+    data = data_9_multi_30[[i]][[j]][[10]] 
+    X = data%>% 
+    dplyr::select(-Y) %>% 
+    as.matrix()
+    Y= data$Y
+    # 5-fold CV using mean squared error
+    fit.lasso <- cv.glmnet(X, Y, nfolds = 5,type.measure = "mse") 
+    # one standard-error rule
+    param.best <- fit.lasso$glmnet.fit$beta[, fit.lasso$lambda==fit.lasso$lambda.1se]
+    output_para[[j]] = param.best[param.best != 0]
+   
+  }
+  para[[i]] = output_para
+
+}
+```
+
+```{r}
+#create a data frame indicate the information how models we fit for datasets in different scenarios perform in identifying signals
+df = data.frame(matrix(ncol = 7, nrow = 0))
+colnames(df) = c('n_parameter_total','n_parameter_selected','ratio_strong_weak', 'prop_strong','prop_wai','prop_wbc','prop_null')
+
+for (i in 1:5){
+   n_parameter_total = i*10
+  for (j in 1:30){
+    p = unlist(para[[i]][j])
+    n_parameter_selected = length(p)
+    pnames = strsplit(names(p), split = '_')
+    name = c()
+    for (n in 1: n_parameter_selected) {
+      name[n]=pnames[[n]][1]
+    }
+    n_strong = length(name[name == 'strong'])
+    n_wai = length(name[name == 'wai'])
+    n_wbc = length(name[name == 'wbc'])
+    n_null = length(name[name == 'null'])
+    ratio_strong_weak = n_strong/(n_wai+n_wbc)
+    prop_strong = round(n_strong/n_parameter_selected,digits=2)
+    prop_wai = round(n_wai/n_parameter_selected,digits =2)
+    prop_wbc = round(n_wbc/n_parameter_selected, digits =2)
+    prop_null = round(n_null/n_parameter_selected, digits =2)
+    df[(i-1)*30+j,]= c(n_parameter_total,n_parameter_selected,ratio_strong_weak,
+                       prop_strong,prop_wai,prop_wbc,prop_null)
+  }
+
+}
+```
+
+```{r}
+#calculate the ratio of number of strong signals and weal signals in true model
+#we pre set the prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2
+ratio_true= 0.1/0.4
+
+df$performance = round(df$ratio_strong_weak/ratio_true, digits = 2)
+performance = df %>% 
+  dplyr::select(n_parameter_total, performance) %>% 
+  subset(performance != Inf)
+```
+
+```{r}
+#plot of the performance against # of parameters
+performance %>%
+  group_by(n_parameter_total) %>% 
+  summarize(mean = mean(performance)) %>% 
+  ggplot(aes(x = n_parameter_total, y = mean))+
+  geom_point()+
+  geom_line()
+
 ```
 
