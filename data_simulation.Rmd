@@ -5,10 +5,11 @@ date: "2020/2/7"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
+```{r setup, echo = FALSE}
 library(tidyverse)
 library(MASS)
 library(matrixcalc)
+library(ggplot2)
 
 knitr::opts_chunk$set(
 	echo = TRUE,
@@ -43,7 +44,6 @@ Default of coef_strong is 5.
 X follows N(0,1).
 
 ```{r}
-
 sim_beta_strong = function(n_strong, coef_strong){
   rep(coef_strong, n_strong) + runif(n_strong, min = 0, max = coef_strong)
 }
