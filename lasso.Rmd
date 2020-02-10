@@ -124,8 +124,8 @@ for (i in 1:5) {
     dplyr::select(-Y) %>% 
     as.matrix()
     Y= data$Y
-    # 5-fold CV using mean squared error
-    fit.lasso <- cv.glmnet(X, Y, nfolds = 5,type.measure = "mse") 
+    # 10-fold CV using mean squared error
+    fit.lasso <- cv.glmnet(X, Y, nfolds = 10,type.measure = "mse") 
     # one standard-error rule
     param.best <- fit.lasso$glmnet.fit$beta[, fit.lasso$lambda==fit.lasso$lambda.1se]
     output_para[[j]] = param.best[param.best != 0]
@@ -171,21 +171,15 @@ for (i in 1:5){
 #plot the proportion of each signals 
 df %>%
   group_by(n_parameter_total) %>%
-  mutate(strong = mean(prop_strong),
-         wai = mean(prop_wai),
-         wbc= mean(prop_wbc), 
-         null = mean(prop_null)) %>%
+  mutate(wai = mean(prop_wai),
+         wbc= mean(prop_wbc))%>%
   ggplot(aes(x = n_parameter_total))+
- geom_point(aes(y=(strong)*100, color="prop_strong")) +
  geom_point(aes(y=(wai)*100, color="prop_wai")) + 
  geom_point(aes(y=(wbc)*100, color="prop_wbc")) + 
- geom_point(aes(y=(null)*100, color="prop_null")) + 
-  geom_line(aes(y=(strong)*100, color="prop_strong")) +
   geom_line(aes(y=(wai)*100, color="prop_wai")) + 
   geom_line(aes(y=(wbc)*100, color="prop_wbc")) + 
-  geom_line(aes(y=(null)*100, color="prop_null")) + 
- labs(title = "Percent of each type of signal included in the LASSO  model",
-       y = "Percent of signals included in the model (%)",
+ labs(title = "Percent of weak signals included in the LASSO  model",
+       y = "Percent of weak signals included in the model (%)",
        x = "Number of (pre-set) total parameters") +  
   theme_bw() + 
   theme(plot.title = 
@@ -193,9 +187,90 @@ df %>%
                        size=12, 
                        face='bold'), 
           legend.position = "bottom") +
-  scale_x_discrete(limits=c("prop_strong", "prop_wai", "prop_wbc", "prop_null")) + 
-  scale_color_discrete(name = "Signal Type", labels = c("Strong", "WAI", "WBC", "Null")) 
+  scale_x_discrete(limits=c( "prop_wai", "prop_wbc")) + 
+  scale_color_discrete(name = "Signal Type", labels = c("WAI", "WBC")) 
 ```
 
+
+```{r}
+df %>% ggplot(aes()) +
+  geom_density(aes(x = prop_wbc, color = "WBC")) + 
+  geom_density(aes(x=prop_wai, color = "WAI")) +
+  facet_grid(~n_parameter_total) +
+  theme(legend.title=element_blank())+
+  labs(title = "Distribution of Weak Signals Identified by LASSO Model",
+       x = "Percent of weak signals included in the model (%)",
+       y = "Density") +  
+   theme_bw()+
+  scale_color_discrete(name = "Signal Type", labels = c( "WAI", "WBC"))
+
+```
+
+From both two plots, it can be found that increasing parameters does have a little effect on identity the weak signals, especially the WAI. But doesn't help too much.
+
+```{r}
+#calculate the MSE of strong coefficients
+#create a litst to store the coefficients of strong signals in the "true" model
+true_coef = vector('list', length = 5)
+for (i in 1:5){
+  output_coef = vector('list',length = 30)
+  for (j in 1:30){
+    coef = data_9_multi_30[[i]][[j]][1]
+    coef_strong = coef[[1]][1:i]
+    output_coef[[j]] = coef_strong
+  }
+  true_coef[[i]] = output_coef
+}
+
+#create a list to store the coefficients of strong signals in the fitted model 
+fitted_coef = vector('list', length = 5)
+for (i in 1:5){
+  output_coef2 = vector('list', length = 30)
+  for (j in 1:30){
+    p = unlist(para[[i]][j]) 
+    pnames2 = strsplit(names(p), split = '_')
+    for (n in 1:length(p)){
+      names(p)[n] = pnames2[[n]][1]
+    }
+    output_coef2[[j]] = p[names(p)=='strong']
+  }
+  fitted_coef[[i]] = output_coef2
+}
+```
+
+```{r}
+#calculate the MSE for each scenarios
+mse_df = data.frame(matrix (ncol = 0, nrow = 30))
+for (i in 1:5){
+  mse_list2 = c()
+  for (j in 1:30){
+    MSE = mean((true_coef[[i]][[j]] - fitted_coef[[i]][[j]])^2)
+    mse_list2[j] = as.vector(MSE)
+  }
+  
+  mse_df =cbind(mse_df,mse_list2)
+}
+names(mse_df) = c("10","20","30","40","50")
+mse_df
+```
+
+```{r}
+#plot of MSE for each scenarios against # of parameters
+mse_df2 = mse_df %>%
+  pivot_longer(
+    everything(),
+    names_to = "n_param_total",
+    values_to = 'MSE') 
+  
+mse_df2 %>% 
+  ggplot()+
+  geom_violin(aes(x = n_param_total, y = MSE, color = n_param_total))+
+   labs(title = "MSE of strong signals",
+       x = "Number of (pre-set) total parameters",
+       y = "MSE") +  
+   theme_bw()+
+  scale_color_discrete(name = " Number of total params", labels = c(10,20,30,40,50))
+  
+```
 
 
