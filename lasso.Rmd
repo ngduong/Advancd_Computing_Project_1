@@ -91,7 +91,7 @@ data_test = sim_data(1000)
 ```
 
 
-# Vary the amount of n_parameter 10, 20, ..., 90 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 30 samples for each
+#Vary the amount of n_parameter 10, 20, ..., 90 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 30 samples for each
 
 ```{r}
 data_9_multi_30 = vector("list", length = 9)
@@ -167,7 +167,37 @@ for (i in 1:5){
 ```
 
 ```{r}
-#calculate the ratio of number of strong signals and weal signals in true model
+#plot the proportion of each signals 
+df %>%
+  group_by(n_parameter_total) %>%
+  mutate(strong = mean(prop_strong),
+         wai = mean(prop_wai),
+         wbc= mean(prop_wbc), 
+         null = mean(prop_null)) %>%
+  ggplot(aes(x = n_parameter_total))+
+ geom_point(aes(y=(strong)*100, color="prop_strong")) +
+ geom_point(aes(y=(wai)*100, color="prop_wai")) + 
+ geom_point(aes(y=(wbc)*100, color="prop_wbc")) + 
+ geom_point(aes(y=(null)*100, color="prop_null")) + 
+  geom_line(aes(y=(strong)*100, color="prop_strong")) +
+  geom_line(aes(y=(wai)*100, color="prop_wai")) + 
+  geom_line(aes(y=(wbc)*100, color="prop_wbc")) + 
+  geom_line(aes(y=(null)*100, color="prop_null")) + 
+ labs(title = "Percent of each type of signal included in the LASSO  model",
+       y = "Percent of signals included in the model (%)",
+       x = "Number of (pre-set) total parameters") +  
+  theme_bw() + 
+  theme(plot.title = 
+          element_text(hjust = 0.5, 
+                       size=12, 
+                       face='bold'), 
+          legend.position = "bottom") +
+  scale_x_discrete(limits=c("prop_strong", "prop_wai", "prop_wbc", "prop_null")) + 
+  scale_color_discrete(name = "Signal Type", labels = c("Strong", "WAI", "WBC", "Null")) 
+```
+
+```{r}
+#calculate the ratio of number of strong signals and weak signals in true model
 #we pre set the prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2
 ratio_true= 0.1/0.4
 
@@ -184,7 +214,10 @@ performance %>%
   summarize(mean = mean(performance)) %>% 
   ggplot(aes(x = n_parameter_total, y = mean))+
   geom_point()+
-  geom_line()
-
+  geom_line()+
+  labs(title = "ratio of ratio of number of strong signals and weak signals",
+       y = "ratio ",
+       x = "Number of (pre-set) total parameters")+
+theme_bw() 
 ```
 
