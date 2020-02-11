@@ -1,0 +1,276 @@
+---
+title: "lasso"
+author: 'Crystal Li'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(MASS)
+library(matrixcalc)
+library(glmnet)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+sim_beta_strong = function(n_strong, coef_strong){
+  rep(coef_strong, n_strong) + runif(n_strong, min = 0, max = coef_strong)
+}
+
+
+sim_data = function(n_sample = 1000, n_parameter = 50, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.30, coef_strong = 5) {
+  # Numbers of four signals
+  n_strong = as.integer(n_parameter * prop_strong) # strong
+  n_wbc = as.integer(n_parameter * prop_wbc) # weak but correlated
+  n_wai = as.integer(n_parameter * prop_wai) # weak and independent
+  n_null = n_parameter - n_strong - n_wbc - n_wai # null
+  
+  if (n_null < 0) {
+    return("Given parameters' proportions are not valid.")
+  }
+  
+  bound = c * sqrt(log(n_parameter) / n_sample) # threshold of weak/strong, the default is 0.14
+  if (coef_strong < bound) {
+    coef_strong = coef_strong + 2 * bound
+  }
+  
+  cor_matrix = diag(n_parameter)
+  # wbc covariates are correlated to the first strong covariate
+  cor_matrix[1, (n_strong + n_wai + 1):(n_strong + n_wai + n_wbc)] = cor
+  cor_matrix[(n_strong + n_wai + 1):(n_strong + n_wai + n_wbc), 1] = cor
+  
+  if (!is.positive.definite(cor_matrix)) {
+    return("The correlation matrix is not valid.")
+  }
+  
+  # simulate the data from multivariate normal
+  X = mvrnorm(n = n_sample, mu = rep(0, n_parameter), Sigma = cor_matrix) # var = 1, correlation = covariance
+  
+  beta = c(
+    sim_beta_strong(n_strong, coef_strong),
+    runif(min = bound/2, max = bound, n = n_wai), 
+    runif(min = bound/2, max = bound, n = n_wbc),
+    rep(0, n_null) 
+  )
+  
+  Y = 1 + X %*% beta + rnorm(n_sample)
+  data = as_tibble(data.frame(cbind(X, Y)))
+  
+  # Name the columns
+  cols = c(
+    str_c("strong", 1:n_strong, sep = "_"),
+    str_c("wai", 1:n_wai, sep = "_"),
+    str_c("wbc", 1:n_wbc, sep = "_"),
+    str_c("null", 1:n_null, sep = "_"),
+    "Y"
+   )
+   colnames(data) = cols
+   data = data %>% 
+     dplyr::select(Y, everything())
+
+  list(beta = beta, 
+       correlation = cor,
+       n_parameter = n_parameter,
+       prop_strong = prop_strong,
+       prop_wbc = prop_wbc, 
+       prop_wai = prop_wbc,
+       n_strong = n_strong,
+       n_wai = n_wai,
+       n_wbc = n_wbc,
+       data = data
+       )
+  
+}
+
+data_test = sim_data(1000)
+
+
+```
+
+
+#Vary the amount of n_parameter 10, 20, ..., 90 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 30 samples for each
+
+```{r}
+data_9_multi_30 = vector("list", length = 9)
+
+for (i in 1:9) {
+  num_parameter = 10*i
+  
+  output = vector("list", length = 30)
+  
+  for (j in 1:30) {
+  output[[j]] =  sim_data(n_parameter = num_parameter)
+  }
+  
+  data_9_multi_30[[i]] = output
+
+}
+```
+
+
+
+#modeling using LASSO
+```{r}
+# create a list to store all the non_zero parameters in each fit regression
+para = vector("list", length = 5)
+for (i in 1:5) {
+  output_para = vector("list", length = 30)
+  output_fit = vector("list", length = 30)
+  for (j in 1:30) {
+    data = data_9_multi_30[[i]][[j]][[10]] 
+    X = data%>% 
+    dplyr::select(-Y) %>% 
+    as.matrix()
+    Y= data$Y
+    # 10-fold CV using mean squared error
+    fit.lasso <- cv.glmnet(X, Y, nfolds = 10,type.measure = "mse") 
+    # one standard-error rule
+    param.best <- fit.lasso$glmnet.fit$beta[, fit.lasso$lambda==fit.lasso$lambda.1se]
+    output_para[[j]] = param.best[param.best != 0]
+   
+  }
+  para[[i]] = output_para
+
+}
+```
+
+```{r}
+#create a data frame indicate the information how models we fit for datasets in different scenarios perform in identifying signals
+df = data.frame(matrix(ncol = 7, nrow = 0))
+colnames(df) = c('n_parameter_total','n_parameter_selected','ratio_strong_weak', 'prop_strong','prop_wai','prop_wbc','prop_null')
+
+for (i in 1:5){
+   n_parameter_total = i*10
+  for (j in 1:30){
+    p = unlist(para[[i]][j])
+    n_parameter_selected = length(p)
+    pnames = strsplit(names(p), split = '_')
+    name = c()
+    for (n in 1: n_parameter_selected) {
+      name[n]=pnames[[n]][1]
+    }
+    n_strong = length(name[name == 'strong'])
+    n_wai = length(name[name == 'wai'])
+    n_wbc = length(name[name == 'wbc'])
+    n_null = length(name[name == 'null'])
+    ratio_strong_weak = n_strong/(n_wai+n_wbc)
+    prop_strong = round(n_strong/n_parameter_selected,digits=2)
+    prop_wai = round(n_wai/n_parameter_selected,digits =2)
+    prop_wbc = round(n_wbc/n_parameter_selected, digits =2)
+    prop_null = round(n_null/n_parameter_selected, digits =2)
+    df[(i-1)*30+j,]= c(n_parameter_total,n_parameter_selected,ratio_strong_weak,
+                       prop_strong,prop_wai,prop_wbc,prop_null)
+  }
+
+}
+```
+
+```{r}
+#plot the proportion of each signals 
+df %>%
+  group_by(n_parameter_total) %>%
+  mutate(wai = mean(prop_wai),
+         wbc= mean(prop_wbc))%>%
+  ggplot(aes(x = n_parameter_total))+
+ geom_point(aes(y=(wai)*100, color="prop_wai")) + 
+ geom_point(aes(y=(wbc)*100, color="prop_wbc")) + 
+  geom_line(aes(y=(wai)*100, color="prop_wai")) + 
+  geom_line(aes(y=(wbc)*100, color="prop_wbc")) + 
+ labs(title = "Percent of weak signals included in the LASSO  model",
+       y = "Percent of weak signals included in the model (%)",
+       x = "Number of (pre-set) total parameters") +  
+  theme_bw() + 
+  theme(plot.title = 
+          element_text(hjust = 0.5, 
+                       size=12, 
+                       face='bold'), 
+          legend.position = "bottom") +
+  scale_x_discrete(limits=c( "prop_wai", "prop_wbc")) + 
+  scale_color_discrete(name = "Signal Type", labels = c("WAI", "WBC")) 
+```
+
+
+```{r}
+df %>% ggplot(aes()) +
+  geom_density(aes(x = prop_wbc, color = "WBC")) + 
+  geom_density(aes(x=prop_wai, color = "WAI")) +
+  facet_grid(~n_parameter_total) +
+  theme(legend.title=element_blank())+
+  labs(title = "Distribution of Weak Signals Identified by LASSO Model",
+       x = "Percent of weak signals included in the model (%)",
+       y = "Density") +  
+   theme_bw()+
+  scale_color_discrete(name = "Signal Type", labels = c( "WAI", "WBC"))
+
+```
+
+From both two plots, it can be found that increasing parameters does have a little effect on identity the weak signals, especially the WAI. But doesn't help too much.
+
+```{r}
+#calculate the MSE of strong coefficients
+#create a litst to store the coefficients of strong signals in the "true" model
+true_coef = vector('list', length = 5)
+for (i in 1:5){
+  output_coef = vector('list',length = 30)
+  for (j in 1:30){
+    coef = data_9_multi_30[[i]][[j]][1]
+    coef_strong = coef[[1]][1:i]
+    output_coef[[j]] = coef_strong
+  }
+  true_coef[[i]] = output_coef
+}
+
+#create a list to store the coefficients of strong signals in the fitted model 
+fitted_coef = vector('list', length = 5)
+for (i in 1:5){
+  output_coef2 = vector('list', length = 30)
+  for (j in 1:30){
+    p = unlist(para[[i]][j]) 
+    pnames2 = strsplit(names(p), split = '_')
+    for (n in 1:length(p)){
+      names(p)[n] = pnames2[[n]][1]
+    }
+    output_coef2[[j]] = p[names(p)=='strong']
+  }
+  fitted_coef[[i]] = output_coef2
+}
+```
+
+```{r}
+#calculate the MSE for each scenarios
+mse_df = data.frame(matrix (ncol = 0, nrow = 30))
+for (i in 1:5){
+  mse_list2 = c()
+  for (j in 1:30){
+    MSE = mean((true_coef[[i]][[j]] - fitted_coef[[i]][[j]])^2)
+    mse_list2[j] = as.vector(MSE)
+  }
+  
+  mse_df =cbind(mse_df,mse_list2)
+}
+names(mse_df) = c("10","20","30","40","50")
+mse_df
+```
+
+```{r}
+#plot of MSE for each scenarios against # of parameters
+mse_df2 = mse_df %>%
+  pivot_longer(
+    everything(),
+    names_to = "n_param_total",
+    values_to = 'MSE') 
+  
+mse_df2 %>% 
+  ggplot()+
+  geom_violin(aes(x = n_param_total, y = MSE, color = n_param_total))+
+   labs(title = "MSE of strong signals",
+       x = "Number of (pre-set) total parameters",
+       y = "MSE") +  
+   theme_bw()+
+  scale_color_discrete(name = " Number of total params", labels = c(10,20,30,40,50))
+  
+```
+
+
