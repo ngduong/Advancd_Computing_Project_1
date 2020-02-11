@@ -251,7 +251,7 @@ for (i in 1:5){
   mse_df =cbind(mse_df,mse_list2)
 }
 names(mse_df) = c("10","20","30","40","50")
-mse_df
+head(mse_df)
 ```
 
 ```{r}
@@ -273,4 +273,67 @@ mse_df2 %>%
   
 ```
 
+```{r}
+#calculate the MSE of strong1    coefficients
+#create a litst to store the coefficients of strong1 signals in the "true" model
+true_coef2 = vector('list', length = 5)
+for (i in 1:5){
+  output_coef = vector('list',length = 30)
+  for (j in 1:30){
+    coef = data_9_multi_30[[i]][[j]][1]
+    coef_strong = coef[[1]][1]
+    output_coef[[j]] = coef_strong
+  }
+  true_coef2[[i]] = output_coef
+}
+
+#create a list to store the coefficients of strong1 signals in the fitted model 
+fitted_coef2 = vector('list', length = 5)
+for (i in 1:5){
+  output_coef2 = vector('list', length = 30)
+  for (j in 1:30){
+    p = unlist(para[[i]][j]) 
+    pnames2 = strsplit(names(p), split = '_')
+    for (n in 1:length(p)){
+      names(p)[n] = pnames2[[n]][1]
+    }
+    output_coef2[[j]] = p[names(p)=='strong'][1]
+  }
+  fitted_coef2[[i]] = output_coef2
+}
+```
+```{r}
+#calculate the MSE for each scenarios
+mse_df_ = data.frame(matrix (ncol = 0, nrow = 30))
+for (i in 1:5){
+  mse_list2 = c()
+  for (j in 1:30){
+    MSE = mean((true_coef2[[i]][[j]] - fitted_coef2[[i]][[j]])^2)
+    mse_list2[j] = as.vector(MSE)
+  }
+  
+  mse_df_ =cbind(mse_df_,mse_list2)
+}
+names(mse_df_) = c("10","20","30","40","50")
+head(mse_df_)
+```
+
+```{r}
+#plot of MSE for each scenarios against # of parameters
+mse_df2_ = mse_df_ %>%
+  pivot_longer(
+    everything(),
+    names_to = "n_param_total",
+    values_to = 'MSE') 
+  
+mse_df2_ %>% 
+  ggplot()+
+  geom_violin(aes(x = n_param_total, y = MSE, color = n_param_total))+
+   labs(title = "MSE of strong 1 signals",
+       x = "Number of (pre-set) total parameters",
+       y = "MSE") +  
+   theme_bw()+
+  scale_color_discrete(name = " Number of total params", labels = c(10,20,30,40,50))
+  
+```
 
