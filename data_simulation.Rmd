@@ -130,13 +130,13 @@ sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wb
 ```{r}
 data_9_multi_30 = vector("list", length = 9)
 
-for (i in 1:9) {
+for (i in 1:10) {
   num_parameter = 10*i
   
-  output = vector("list", length = 30)
+  output = vector("list", length = 100)
   
   for (j in 1:30) {
-  output[[j]] =  sim_data(n_parameter = num_parameter)
+  output[[j]] =  sim_data(n_parameter = num_parameter, cor = 0.3)
   }
   
   data_9_multi_30[[i]] = output
@@ -146,7 +146,7 @@ for (i in 1:9) {
 
 ```{r}
 # debug
-n_sample = 200; n_parameter = 100; prop_strong = 0.1; prop_wbc = 0.2; prop_wai = 0.2; c = 1; cor = 0.3; coef_strong = 5
+n_sample = 200; n_parameter = 100; prop_strong = 0.1; prop_wbc = 0.2; prop_wai = 0.2; c = 1; cor = 0.2; coef_strong = 5
 
  # Numbers of four signals
   n_strong = as.integer(n_parameter * prop_strong) # strong
