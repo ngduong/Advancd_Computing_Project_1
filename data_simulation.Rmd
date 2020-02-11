@@ -125,21 +125,21 @@ sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wb
 ```
 
 
-# Vary the amount of n_parameter 10, 20, ..., 90 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 30 samples for each
+# Vary the amount of n_parameter 10, 20, ..., 100 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 100 samples for each
 
 ```{r}
-data_9_multi_30 = vector("list", length = 9)
+data_10_multi_100 = vector("list", length = 10)
 
 for (i in 1:10) {
   num_parameter = 10*i
   
   output = vector("list", length = 100)
   
-  for (j in 1:30) {
+  for (j in 1:100) {
   output[[j]] =  sim_data(n_parameter = num_parameter, cor = 0.3)
   }
   
-  data_9_multi_30[[i]] = output
+  data_10_multi_100[[i]] = output
 
 }
 ```
