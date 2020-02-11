@@ -9,11 +9,10 @@ output: github_document
 library(tidyverse)
 library(MASS)
 library(matrixcalc)
-<<<<<<< HEAD
-=======
-library(glmnet)
+library(pracma)
+
 library(dplyr)
->>>>>>> fc5b97c939b5aa7b4d3914e3698cee189b958ab0
+
 library(ggplot2)
 
 knitr::opts_chunk$set(
@@ -38,9 +37,6 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
 # Generate data
 
-n_sample = 1000 # fix sample size
-
-n_parameter and prop_strong may be changed.
 
 Default of correlation is set to be 0.3, maybe it should be other number like 0.5.
 
@@ -54,7 +50,7 @@ sim_beta_strong = function(n_strong, coef_strong){
 }
 
 
-sim_data = function(n_sample = 1000, n_parameter = 50, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.3, coef_strong = 5) {
+sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.3, coef_strong = 5) {
   # Numbers of four signals
   n_strong = as.integer(n_parameter * prop_strong) # strong
   n_wbc = as.integer(n_parameter * prop_wbc) # weak but correlated
@@ -71,9 +67,15 @@ sim_data = function(n_sample = 1000, n_parameter = 50, prop_strong = 0.1, prop_w
   }
   
   cor_matrix = diag(n_parameter)
-  # wbc covariates are correlated to the first strong covariate
-  cor_matrix[1, (n_strong + n_wai + 1):(n_strong + n_wai + n_wbc)] = cor
-  cor_matrix[(n_strong + n_wai + 1):(n_strong + n_wai + n_wbc), 1] = cor
+  
+  # add correlation
+  for (i in 1:n_strong) {
+    cor_matrix[i, (n_strong + n_wai + i)] = cor
+    cor_matrix[i, (n_strong + n_wai + n_wbc + 1 - i)] = cor
+    cor_matrix[(n_strong + n_wai + i), i] = cor
+    cor_matrix[(n_strong + n_wai + n_wbc + 1 - i), i] = cor
+  }
+  
   
   if (!is.positive.definite(cor_matrix)) {
     return("The correlation matrix is not valid.")
@@ -117,8 +119,7 @@ sim_data = function(n_sample = 1000, n_parameter = 50, prop_strong = 0.1, prop_w
        )
   
 }
-n_parameter = 70
-data_test = sim_data(n_parameter = 70, prop_strong = 5/n_parameter, prop_wbc = 10/n_parameter, prop_wai = 10/n_parameter)
+
 
 
 ```
@@ -145,7 +146,7 @@ for (i in 1:9) {
 
 ```{r}
 # debug
-n_sample = 1000; n_parameter = 70; prop_strong = 0.1; prop_wbc = 0.2; prop_wai = 0.2; c = 1; cor = 0.5; coef_strong = 5
+n_sample = 200; n_parameter = 100; prop_strong = 0.1; prop_wbc = 0.2; prop_wai = 0.2; c = 1; cor = 0.3; coef_strong = 5
 
  # Numbers of four signals
   n_strong = as.integer(n_parameter * prop_strong) # strong
@@ -157,16 +158,24 @@ n_sample = 1000; n_parameter = 70; prop_strong = 0.1; prop_wbc = 0.2; prop_wai =
     return("Given parameters' proportions are not valid.")
   }
   
-  bound = c * sqrt(log(n_parameter) / n_sample) # threshold of weak/strong, the default is 0.14
+  bound = c * sqrt(log(n_parameter) / n_sample) # threshold of weak/strong, the defau clt is 0.14
   if (coef_strong < bound) {
     coef_strong = coef_strong + 2 * bound
   }
   
   cor_matrix = diag(n_parameter)
-  # wbc covariates are correlated to the first strong covariate
-  cor_matrix[1, (n_strong + n_wai + 1):(n_strong + n_wai + n_wbc)] = cor
-  cor_matrix[(n_strong + n_wai + 1):(n_strong + n_wai + n_wbc), 1] = cor
-  cor_matrix = round(cor_matrix, 1)
+  
+  cor_matrix[mod(1, n_strong), (n_strong + n_wai + 1)] = cor
+  
+  # add correlation
+  for (i in 1:n_strong) {
+    cor_matrix[i, (n_strong + n_wai + i)] = cor
+    cor_matrix[i, (n_strong + n_wai + n_wbc + 1 - i)] = cor
+    cor_matrix[(n_strong + n_wai + i), i] = cor
+    cor_matrix[(n_strong + n_wai + n_wbc + 1 - i), i] = cor
+  }
+  
+
   is.symmetric.matrix(cor_matrix)
   is.positive.definite(cor_matrix)
   
