@@ -31,4 +31,17 @@ df %>%
   scale_x_discrete(limits=c( "prop_wai", "prop_wbc")) + 
   scale_color_discrete(name = "Signal Type", labels = c("WAI", "WBC")) 
 ```
+```{r}
+df %>% 
+  ggplot(aes()) +
+  geom_density(aes(x = prop_wbc, color = "WBC")) + 
+  geom_density(aes(x=prop_wai, color = "WAI")) +
+  facet_grid(rows = vars(corr), cols = vars(n_parameter_total)) +
+  theme(legend.title=element_blank())+
+  labs(title = "Distribution of Weak Signals Identified by LASSO Model(corr = 0.3)",
+       x = "Percent of weak signals included in the model (%)",
+       y = "Density") +  
+   theme_bw()+
+  scale_color_discrete(name = "Signal Type", labels = c( "WAI", "WBC"))
+```
 
