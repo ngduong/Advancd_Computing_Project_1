@@ -198,10 +198,12 @@ for (i in 1:10){
 
 ```{r}
 #plot the proportion of each signals 
-df %>%
+df_0.5 = df %>%
   group_by(n_parameter_total) %>%
   mutate(wai = mean(prop_wai),
-         wbc= mean(prop_wbc))%>%
+         wbc= mean(prop_wbc),
+         corr = 0.5)
+df_0.5 %>% 
   ggplot(aes(x = n_parameter_total))+
  geom_point(aes(y=(wai)*100, color="prop_wai")) + 
  geom_point(aes(y=(wbc)*100, color="prop_wbc")) + 
