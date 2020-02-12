@@ -1,0 +1,260 @@
+---
+title: "data_testing_part2_forward"
+author: "Ngoc Duong - nqd2000"
+date: "2/11/2020"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup, echo = FALSE}
+library(tidyverse)
+library(MASS)
+library(matrixcalc)
+library(ggplot2)
+library(broom)
+library(pracma)
+```
+
+Write function to simulate dataset with 3 kinds of given predictors + null predictors
+
+```{r}
+sim_beta_strong = function(n_strong, coef_strong){
+  rep(coef_strong, n_strong) + runif(n_strong, min = 0, max = coef_strong)
+}
+
+
+sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.3, coef_strong = 5) {
+  # Numbers of four signals
+  n_strong = as.integer(n_parameter * prop_strong) # strong
+  n_wbc = as.integer(n_parameter * prop_wbc) # weak but correlated
+  n_wai = as.integer(n_parameter * prop_wai) # weak and independent
+  n_null = n_parameter - n_strong - n_wbc - n_wai # null
+  
+  if (n_null < 0) {
+    return("Given parameters' proportions are not valid.")
+  }
+  
+  bound = c * sqrt(log(n_parameter) / n_sample) # threshold of weak/strong, the default is 0.14
+  if (coef_strong < bound) {
+    coef_strong = coef_strong + 2 * bound
+  }
+  
+  cor_matrix = diag(n_parameter)
+  
+  # add correlation
+  for (i in 1:n_strong) {
+    cor_matrix[i, (n_strong + n_wai + i)] = cor
+    cor_matrix[i, (n_strong + n_wai + n_wbc + 1 - i)] = cor
+    cor_matrix[(n_strong + n_wai + i), i] = cor
+    cor_matrix[(n_strong + n_wai + n_wbc + 1 - i), i] = cor
+  }
+  
+  
+  if (!is.positive.definite(cor_matrix)) {
+    return("The correlation matrix is not valid.")
+  }
+  
+  # simulate the data from multivariate normal
+  X = mvrnorm(n = n_sample, mu = rep(0, n_parameter), Sigma = cor_matrix) # var = 1, correlation = covariance
+  
+  beta = c(
+    sim_beta_strong(n_strong, coef_strong),
+    runif(min = bound/2, max = bound, n = n_wai), 
+    runif(min = bound/2, max = bound, n = n_wbc),
+    rep(0, n_null) 
+  )
+  
+  Y = 1 + X %*% beta + rnorm(n_sample)
+  data = as_tibble(data.frame(cbind(X, Y)))
+  
+  # Name the columns
+  cols = c(
+    str_c("strong", 1:n_strong, sep = "_"),
+    str_c("wai", 1:n_wai, sep = "_"),
+    str_c("wbc", 1:n_wbc, sep = "_"),
+    str_c("null", 1:n_null, sep = "_"),
+    "Y"
+   )
+   colnames(data) = cols
+   data = data %>% 
+     dplyr::select(Y, everything())
+   
+  masterlist = list(beta = beta, 
+       correlation = cor,
+       n_parameter = n_parameter,
+       prop_strong = prop_strong,
+       prop_wbc = prop_wbc, 
+       prop_wai = prop_wbc,
+       n_strong = n_strong,
+       n_wai = n_wai,
+       n_wbc = n_wbc,
+       data = data
+       )
+}
+```
+
+Function implementing forward selection method using AIC as criterion
+```{r}
+forward.aic.lm = function(df) {
+  null.lm = lm(Y ~ 1, data = df)
+  full.lm = lm(Y ~ ., data = df)
+  aic.lm = step(object = null.lm,
+             scope = list(lower = null.lm, 
+                          upper = full.lm), 
+             direction = "forward",
+             trace = FALSE, 
+             k = 2)
+  aic.lm
+}
+```
+
+```{r}
+# function to remove weak predictors one by one 
+delete_weak = function(data, n_wai_del = 0, n_wbc_del = 0) {
+  # definte which columns we should remove from WBC and WAI
+  del_col = c(
+    str_c("wai", 1:n_wai_del, sep = "_"),
+    str_c("wbc", 1:n_wbc_del, sep = "_")
+  )
+  data = data[, !(names(data) %in% del_col)]
+}
+
+est_beta = NULL
+# Remove WAI and WBC oone by one
+for (i in 0:20) {
+  for (j in 1:70) {
+    if (i <= 10) {
+      n_wai_del = i
+      n_wbc_del = 0
+    } else {
+      n_wai_del = 10
+      n_wbc_del = i - 10
+    }
+     data = sim_data(n_sample = 200, n_parameter = 50)
+ data_del = delete_weak(data$data, n_wai_del = n_wai_del, n_wbc_del = n_wbc_del)
+ # create the forward model
+    forward_lm = forward.aic.lm(data_del)
+    beta_est = tidy(forward_lm) %>% filter(str_detect(term, "strong")) %>% .[1:2] %>% separate(term, into = c("term", "index"), sep = "_") %>% mutate(index = as.numeric(index)) %>% arrange(index) %>% pull(estimate) 
+    true_beta = data$beta[1:5]
+    true_beta_1 = true_beta[1]
+    beta_est_1 = beta_est[1]
+    # Gather coefficients from estimated model that did not see some weak predictors
+    est_beta= bind_rows(est_beta, c(mse_strong = mean((beta_est-true_beta)^2), mae_strong = mean(beta_est-true_beta), mse_strong_1 = mean((beta_est_1 - true_beta_1)^2), mae_strong_1 = mean(beta_est_1-true_beta_1), n.wbc.missing = n_wbc_del, n.wai.missing = n_wai_del))
+}}
+```
+
+```{r}
+est_beta %>% mutate(n_weak_missing = n.wai.missing + n.wbc.missing) %>% 
+  group_by(n_weak_missing) %>% 
+  mutate(avg_mse_strong = mean(mse_strong)) %>% 
+  ggplot(aes(x = n_weak_missing, y = avg_mse_strong)) +
+  geom_point() +  geom_smooth(method = "loess", se = 2, stat = "smooth", formula = y~x)
+```
+
+
+Crystal's codes adapt
+```{r}
+data_delete = vector("list", length = 50)
+for (j in 1:50) {
+data_delete[[j]] =  sim_data(n_parameter = 50, cor = 0.3, n_sample = 200)
+}
+```
+
+```{r}
+#get the coef of strong signals for the "true"
+true_coef = vector("list", length = 50)
+for (j in 1:50){
+  coef= data_delete[[j]][[1]]
+  strong = coef[1:5]
+  true_coef[[j]] = strong
+}
+```
+  
+```{r}
+#delete weak signals before fitting the models and construct a new list of datasets
+data_new = vector("list")
+
+for (i in 1:50){
+  output = vector("list")
+  
+  for (j in 1:20){
+    data = data_delete[[i]][[10]]
+    output[[j]] = data[-c(7:(6+j))]
+  }
+  data_new[[i]] = output
+}
+```
+
+```{r}
+#fit forward models using new deleted datasets
+#and store the new fitted param in a new list
+param_new = vector("list", length = 50)
+for (i in 1:50) {
+  output_para = vector("list", length = 20)
+  for (j in 1:20) {
+    data = data_new[[i]][[j]]
+    X = data %>% 
+    dplyr::select(-Y) %>% 
+    as.matrix()
+    Y= data$Y
+    # 10-fold CV using mean squared error
+    forward_lm = forward.aic.lm(data)
+    a = tidy(forward_lm) %>% filter(str_detect(term, "strong")) %>% .[1:2] %>% separate(term, into = c("term", "index"), sep = "_") %>% mutate(index = as.numeric(index)) %>% arrange(index) %>% pull(estimate) %>% as.data.frame()
+    rownames(a) = c(str_c("strong", 1:5, sep = "_"))
+    output_para[[j]] = t(a) %>% data.frame()
+  }
+  param_new[[i]] = output_para
+}
+```
+
+```{r}
+# extract the fitted new strong signals' coeff in a list
+fitted_coef = vector('list', length = 50)
+for (i in 1:50){
+  output_coef2 = vector('list', length = 20)
+  for (j in 1:20){
+    p = unlist(param_new[[i]][j]) 
+    pnames2 = strsplit(names(p), split = '_')
+    for (n in 1:length(p)){
+    names(p)[n] = pnames2[[n]][1]
+    }
+    output_coef2[[j]] = p[names(p)=='strong']
+  }
+  fitted_coef[[i]] = output_coef2
+}
+```
+
+```{r}
+mse_df = data.frame(matrix (ncol = 0, nrow = 20))
+for (i in 1:50){
+  mse_list2 = data.frame(matrix (ncol = 0, nrow = 20))
+  for (j in 1:20){
+    MSE_col = as.vector((true_coef[[i]] - (fitted_coef[[i]][[j]] %>% as.vector()))^2)
+    mse_list2 = cbind(mse_list2,MSE_col)
+    names(mse_list2)[j] = j
+  }
+  mse_df =cbind(mse_df,mse_list2)
+}
+```
+
+
+```{r}
+df = mse_df %>% 
+  pivot_longer(
+    everything(),
+    names_to = "n_missing",
+    values_to =  "MSE"
+    
+  ) %>% 
+  group_by(n_missing) %>%
+  summarise(mean_mse = mean(MSE)) %>% 
+  mutate(n_missing = as.numeric(n_missing)) 
+df %>% 
+  ggplot(aes(x = n_missing, y = mean_mse))+
+  geom_point(aes(x = n_missing, y = mean_mse))+
+  geom_smooth(method = "loess", se = T, stat = "smooth", formula = y~x)+
+   labs(title = "Mean of MSE of strong signals against Number of missing weak signals",
+       x = "Number of missing weak signals",
+       y = "Mean of MSE of strong signals") +  
+   theme_bw()
+```
