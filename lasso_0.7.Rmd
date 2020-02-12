@@ -208,7 +208,7 @@ df %>%
  geom_point(aes(y=(wbc)*100, color="prop_wbc")) + 
   geom_line(aes(y=(wai)*100, color="prop_wai")) + 
   geom_line(aes(y=(wbc)*100, color="prop_wbc")) + 
- labs(title = "Percent of weak signals included in the LASSO  model",
+ labs(title = "Percent of weak signals included in the LASSO  model(corr = 0.7)",
        y = "Percent of weak signals included in the model (%)",
        x = "Number of (pre-set) total parameters") +  
   theme_bw() + 
@@ -228,7 +228,7 @@ df %>% ggplot(aes()) +
   geom_density(aes(x=prop_wai, color = "WAI")) +
   facet_grid(~n_parameter_total) +
   theme(legend.title=element_blank())+
-  labs(title = "Distribution of Weak Signals Identified by LASSO Model",
+  labs(title = "Distribution of Weak Signals Identified by LASSO Model(corr = 0.7)",
        x = "Percent of weak signals included in the model (%)",
        y = "Density") +  
    theme_bw()+
@@ -297,7 +297,7 @@ mse_df2 %>%
    mutate(n_param_total = factor(n_param_total, levels=c(10,20,30,40,50,60,70,80,90,100))) %>% 
   ggplot()+
   geom_violin(aes(x = n_param_total, y = MSE, color = n_param_total))+
-   labs(title = "MSE of strong signals",
+   labs(title = "MSE of strong signals(corr = 0.7)",
        x = "Number of (pre-set) total parameters",
        y = "MSE") +  
    theme_bw()+

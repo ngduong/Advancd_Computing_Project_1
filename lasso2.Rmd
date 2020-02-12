@@ -124,7 +124,7 @@ sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wb
 ```
 
 
-# Vary the amount of n_parameter 10, 20, ..., 100 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 100 samples for each
+# Vary the amount of n_parameter 10, 20, ..., 100 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 100 samples for each, and we vary corr values 0.3, 0.5, 0.7
 
 ```{r}
 data_10_multi_100 = vector("list", length = 10)
@@ -208,7 +208,7 @@ df %>%
  geom_point(aes(y=(wbc)*100, color="prop_wbc")) + 
   geom_line(aes(y=(wai)*100, color="prop_wai")) + 
   geom_line(aes(y=(wbc)*100, color="prop_wbc")) + 
- labs(title = "Percent of weak signals included in the LASSO  model",
+ labs(title = "Percent of weak signals included in the LASSO  model(corr = 0.3)",
        y = "Percent of weak signals included in the model (%)",
        x = "Number of (pre-set) total parameters") +  
   theme_bw() + 
@@ -228,7 +228,7 @@ df %>% ggplot(aes()) +
   geom_density(aes(x=prop_wai, color = "WAI")) +
   facet_grid(~n_parameter_total) +
   theme(legend.title=element_blank())+
-  labs(title = "Distribution of Weak Signals Identified by LASSO Model",
+  labs(title = "Distribution of Weak Signals Identified by LASSO Model(corr = 0.3)",
        x = "Percent of weak signals included in the model (%)",
        y = "Density") +  
    theme_bw()+
@@ -236,7 +236,7 @@ df %>% ggplot(aes()) +
 
 ```
 
-From both two plots, it can be found that increasing parameters does have a little effect on identity the weak signals, especially the WAI. But doesn't help too much.
+From both two plots, it can be found that increasing total parameters did have effect on identity the weak signals.
 
 ```{r}
 #calculate the MSE of strong coefficients
@@ -297,7 +297,7 @@ mse_df2 %>%
    mutate(n_param_total = factor(n_param_total, levels=c(10,20,30,40,50,60,70,80,90,100))) %>% 
   ggplot()+
   geom_violin(aes(x = n_param_total, y = MSE, color = n_param_total))+
-   labs(title = "MSE of strong signals",
+   labs(title = "MSE of strong signals(corr = 0.3)",
        x = "Number of (pre-set) total parameters",
        y = "MSE") +  
    theme_bw()+
