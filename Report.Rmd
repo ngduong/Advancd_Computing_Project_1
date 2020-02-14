@@ -122,21 +122,10 @@ $$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymb
 
 # Figures
 
-```{r, out.width = "300px", fig.align="center", echo = FALSE, fig.cap = "Percent of WBC predictors detected as a function of p and c with forward selection" }
-knitr::include_graphics("./img/stepwise.p.png")
+```{r echo=FALSE, out.width='100%', fig.cap="Percent of captured Signals"}
+knitr::include_graphics('F1.png')
 ```
 
-```{r, out.width = "300px", fig.align="center", echo = FALSE, fig.cap = "Detection of WAI predictors increases greatly with higher c" }
-knitr::include_graphics("./img/violin.wai.png")
-```
-
-```{r, out.width = "300px", fig.align="center", echo = FALSE, fig.cap = "Detection of WBC predictors increases with c, but still maintains a wide distribution across simulations" }
-knitr::include_graphics("./img/violin.wbc.png")
-```
-
-```{r, out.width = "400px", fig.align="center", echo = FALSE, fig.cap = "Accuracy decreases more in forward selection when the strong predictor is correlated with weak predictors, but vice-versa when it is not" }
-knitr::include_graphics("./img/mse.sidebyside.png")
-```
 
 
 
