@@ -1,10 +1,8 @@
 ---
-title: "Report"
-author: "Qi Yuchen"
-date: "2020/2/11"
+title: "P8160 Project 1: Simulation Study for Variable Selection Methods"
+author: "Ngoc Duong, Crystal Li, Yuchen Qi"
 output:
   pdf_document: default
-  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -36,9 +34,16 @@ scale_fill_discrete = scale_fill_viridis_d
 theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
+# Introduction
+
+Variables  selection methods are always trying to balance between model fitness and model complexity in the high-dimensional setting. And in application of traditional variables selection methods, they often struggle with identifying weak signals. Some signals are weak but they are still of importance to the true model.
+
+
 # Objectives
 
-In this project, we attempt to compare two automated methods of variable selection, namely stepwise forward method and LASSO regression, in their ability to correctly identify relevant signals and estimating how missing weak signals impact coefficients of strong signals. The two tasks are (1) how well each of the two methods in identifying weak and strong predictors, and (2) how missing “weak” predictors impacts the parameter estimations.
+In this project, we use simulations to compare two automated methods of variable selection, namely stepwise forward method and LASSO regression, in their ability to correctly identify relevant signals and estimating how missing weak signals impact coefficients of strong signals. Specifically, we aim to assess:  
+(1) How well each method performs in identifying weak and strong predictors (by calculating the percentages of strong and weak predictors being captured by each model), and  
+(2) How missing “weak” predictors impact the estimations of strong predictors (by calculating the bias and MSE between “true” strong coefficients and their estimates).
 
 
 # Statistical methods to be studied
@@ -57,8 +62,6 @@ where $\lambda$ is a tunning parameter. Here cross-validation (CV) is the chosen
 \end{description} 
 
 
-
-
 # Scenarios to be investigated
 
 First we give the definitions of "strong", "weak-but-correlated” and “weak-andindependent” signals.  
@@ -70,14 +73,49 @@ $$S_2=\{j: 0<|\beta_j|\le c\sqrt{log (p) / n},\mbox{ some } c>0, \mbox{corr}(X_j
 Definition of weak-and-independent signals  ---
 $$S_3=\{j: 0<|\beta_j|\le c\sqrt{log (p) / n},\mbox{ some } c>0, \mbox{corr}(X_j, X_j')= 0, \mbox{for all } j'\in S_1,  1\le j \le p\}$$
 
-To narrow the scope of our simulations, we set the proportions of strong signals, weak and independent signals, and weak but correlated signals to be 10%, 20%, 20% respectively, then we have 50% null predictors. The coefficients of strong signals follows $Uniform(5,10)$ which is sufficiently larger than the bound, and the coefficients of strong signals follows $Uniform(1/2bound,bound)$, where the bound is the upper bound for the value of weak signal coefficients by definition. The theshold multiplier c is set to be 1.
+To narrow the scope of our simulations, some variables are fixed.  
+  (1) We set the proportions of strong signals, weak and independent signals, and weak but correlated signals to be 10%, 20%, 20% respectively, then we have 50% null predictors.  
+  (2) The coefficients of strong signals follow Uniform(5, 10) which is sufficiently larger than the bound, and the coefficients of strong signals follow Uniform(1/2bound, bound), where the bound is threshold by definition.  
+  (3) The threshold multiplier c is set to be 1.
 
 Then, we vary the amount of total predictors from 10 to 100, with step to be 10. We also choose the correlation value to be 0.3, 0.5, 0.7. For each scenario, we generate 100 datasets. And in each dataset, the sample size is 200. 
 
 
 # Methods for generating data
 
-From the proportions of each type of signals and the number of total predictors, we get how many signals for each type. Then we generate a covariance matrix with the correlations set in this scenario following the definitions of each signal type. For each strong signal, there are two weak but correlated signals that are correlated to it. Whether the matrix is positive definite is also checked before passing it to the function `mvrnorm`, which produces random numbers from a multivariate normal distribution. Finally we generate the response Y as a linear combination of four types of signals and an error term. The code is shown below. 
+## Generating the predictor data matrix X
+
+From the proportions of each type of signals and the number of total predictors, we get how many signals for each type. Then we generate a covariance matrix with the correlations set in this scenario following the definitions of each signal type. Whether the matrix is positive definite is also checked before passing it to the R function `mvrnorm`, which produces random numbers from a multivariate normal distribution. 
+
+## Generating the response Y
+
+We generate the response Y as a linear combination of four types of signals and an error term. The distribution of Y is  
+$$Y\sim N(\boldsymbol X\boldsymbol \beta, \sigma^2)$$  
+where the variance is 1.
+
+
+# Performance Measures
+
+## Task 1: identify strong and weak predictors
+
+We wanted to investigate both variable selection methods’ ability to correctly identify strong and weak (both WAI and WBC) predictors and whether they do so consistently. Therefore, we measure their performances by calculating the percentages of captured strong, WBC and WAI predictors using these two methods as the number of parameters and correlation value changes.
+
+## Task 2; how missing “weak” predictors impacts the estimations of strong predictor
+
+In order to see the effect of missing weak predictors on the coefficient estimates of strong predictors, before fitting the models, we deleted a certain number of weak signals (from 1 to 20) from the original data. We then calculated the MSE and bias between “true” strong coefficients and their estimates, where  
+
+* bias
+
+$$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymbol\beta_j)$$
+
+* MSE
+
+$$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymbol\beta_j)^2$$
+
+
+# Simulation results
+
+
 
 
 ```{r, eval=FALSE}
