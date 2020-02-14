@@ -3,14 +3,14 @@ data\_testing
 Ngoc Duong - nqd2000
 2/8/2020
 
-    ## ── Attaching packages ──────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──
+    ## ── Attaching packages ─────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.2.1 ──
 
     ## ✔ ggplot2 3.2.1     ✔ purrr   0.3.3
     ## ✔ tibble  2.1.3     ✔ dplyr   0.8.3
     ## ✔ tidyr   1.0.0     ✔ stringr 1.4.0
     ## ✔ readr   1.3.1     ✔ forcats 0.4.0
 
-    ## ── Conflicts ─────────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+    ## ── Conflicts ────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
     ## ✖ dplyr::filter() masks stats::filter()
     ## ✖ dplyr::lag()    masks stats::lag()
 
@@ -21,6 +21,13 @@ Ngoc Duong - nqd2000
     ## 
     ##     select
 
+    ## 
+    ## Attaching package: 'pracma'
+
+    ## The following object is masked from 'package:purrr':
+    ## 
+    ##     cross
+
 Write function to simulate dataset with 3 kinds of given predictors +
 null predictors
 
@@ -30,14 +37,13 @@ sim_beta_strong = function(n_strong, coef_strong){
 }
 
 
-sim_data = function(n_parameter, n_sample, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.30, coef_strong = 10) {
-  
+sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.3, coef_strong = 5) {
   # Numbers of four signals
   n_strong = as.integer(n_parameter * prop_strong) # strong
   n_wbc = as.integer(n_parameter * prop_wbc) # weak but correlated
   n_wai = as.integer(n_parameter * prop_wai) # weak and independent
   n_null = n_parameter - n_strong - n_wbc - n_wai # null
-    
+  
   if (n_null < 0) {
     return("Given parameters' proportions are not valid.")
   }
@@ -48,9 +54,15 @@ sim_data = function(n_parameter, n_sample, prop_strong = 0.1, prop_wbc = 0.2, pr
   }
   
   cor_matrix = diag(n_parameter)
-  # wbc covariates are correlated to the first strong covariate
-  cor_matrix[1, (n_strong + n_wai + 1):(n_strong + n_wai + n_wbc)] = cor
-  cor_matrix[(n_strong + n_wai + 1):(n_strong + n_wai + n_wbc), 1] = cor
+  
+  # add correlation
+  for (i in 1:n_strong) {
+    cor_matrix[i, (n_strong + n_wai + i)] = cor
+    cor_matrix[i, (n_strong + n_wai + n_wbc + 1 - i)] = cor
+    cor_matrix[(n_strong + n_wai + i), i] = cor
+    cor_matrix[(n_strong + n_wai + n_wbc + 1 - i), i] = cor
+  }
+  
   
   if (!is.positive.definite(cor_matrix)) {
     return("The correlation matrix is not valid.")
@@ -80,6 +92,18 @@ sim_data = function(n_parameter, n_sample, prop_strong = 0.1, prop_wbc = 0.2, pr
    colnames(data) = cols
    data = data %>% 
      dplyr::select(Y, everything())
+   
+  masterlist = list(beta = beta, 
+       correlation = cor,
+       n_parameter = n_parameter,
+       prop_strong = prop_strong,
+       prop_wbc = prop_wbc, 
+       prop_wai = prop_wbc,
+       n_strong = n_strong,
+       n_wai = n_wai,
+       n_wbc = n_wbc,
+       data = data
+       )
 }
 ```
 
@@ -99,10 +123,9 @@ forward.aic.lm = function(df) {
 }
 ```
 
-Write function to calculate: 1) how many strong predictors are selected
-by model 2) how many percent of strong predictors are selected by model
-3) how many wbi and wac predictors are missed my the model 4) how many
-percent of wbi and wac predictors are missed my the model
+Write function to calculate: 1) how many (percent of) strong predictors
+are selected by model 2) how many (percent of) wbi and wac predictors
+are missed my the model
 
 ``` r
 predictors.analysis = function(model_coeff, n_parameter,
@@ -123,6 +146,7 @@ predictors.analysis = function(model_coeff, n_parameter,
     prop_strong =  round(n_strong_selected/n_strong,2),
     prop_wai = round(n_wai_selected/n_wai,2),
     prop_wbc = round(n_wbc_selected/n_wbc,2),
+    cor = c,
     prop_null = round(n_null_selected/n_null,2)
   ))
 }
@@ -133,17 +157,21 @@ times for each parameter
 
 ``` r
 #key parameters
+set.seed(77)
 forward_summary = NULL
-n_parameter = c(10,20,30,40,50)
-n_sim = 30
-n_sample = 1000
+n_parameter = c(10,20,30,40,50,60,70,80,90,100)
+n_sim = 50
+n_sample = 200
+cor = c(0.3, 0.5, 0.7)
 
+set.seed(77)
+for(c in cor){
 for(i in n_parameter){
     for (j in 1:n_sim) {
-      df = sim_data(n_parameter = i, n_sample = n_sample)
+      df = sim_data(n_parameter = i, n_sample = n_sample, cor = c)
       
     # create the forward model
-      forward_lm = forward.aic.lm(df)
+      forward_lm = forward.aic.lm(df$data)
       
     # calculate the percentages of coefficients missed
       forward_data = predictors.analysis(model_coeff = forward_lm$coefficients, 
@@ -151,9 +179,12 @@ for(i in n_parameter){
       # Gather created models for diagnostics
       forward_summary = rbind(forward_summary, forward_data)
     }
-}
+}}
+```
+
+``` r
 forward_summary_final = forward_summary %>% 
-  group_by(n_parameter_total) %>% 
+  group_by(n_parameter_total, cor) %>% 
   mutate(strong_prfm = mean(prop_strong),
          wai_prfm = mean(prop_wai),
          wbc_prfm = mean(prop_wbc), 
@@ -164,7 +195,7 @@ Visualization with all simulations: 1) How many percent of variables are
 selected by method, on average?
 
 ``` r
-forward_summary_final %>% ggplot(aes(x = n_parameter_total))+
+forward_summary_final %>%  ggplot(aes(x = n_parameter_total))+
  geom_point(aes(y=strong_prfm*100, color="prop_strong")) +
  geom_point(aes(y=wai_prfm*100, color="prop_wai")) + 
  geom_point(aes(y=wbc_prfm*100, color="prop_wbc")) + 
@@ -182,8 +213,9 @@ forward_summary_final %>% ggplot(aes(x = n_parameter_total))+
                        size=12, 
                        face='bold'), 
           legend.position = "bottom") +
-  scale_x_discrete(limits=c("prop_strong", "prop_wai", "prop_wbc", "prop_null")) + 
-  scale_color_discrete(name = "Signal Type", labels = c("Strong", "WAI", "WBC", "Null")) 
+  scale_x_discrete(limits=c(20,40,60,80,100)) + 
+  scale_color_discrete(name = "Signal Type", labels = c("Null", "Strong", "WAI", "WBC")) +
+  facet_grid(~cor, scales="free", space="free")
 ```
 
 ![](data_testing_files/figure-gfm/1-1.png)<!-- -->
@@ -200,21 +232,3 @@ geom_density(aes(x=prop_null, color = "Null", alpha=0.20)) +
 ```
 
 ![](data_testing_files/figure-gfm/1-2.png)<!-- -->
-
-2)  Number of strong predictors changed by more than 10%, expressed in
-    terms of how many weak predictors are missing n\_parameter =
-    c(10,20,30,40,50) n\_sim = 30 n\_sample = 1000
-
-beta.analysis = function(betas){ \#calculate the number of wbc and wai
-missing
-
-\#Calculate MSE of the strong predictors
-
-}
-
-for(i in n\_parameter){ for (j in 1:n\_sim) { df =
-sim\_data(n\_parameter = i, n\_sample = n\_sample) create the forward
-model forward\_lm = forward.aic.lm(df) }
-
-Function to assess variance and bias of strong predictors’ coefficients
-with respect to the number of missing weak variables
