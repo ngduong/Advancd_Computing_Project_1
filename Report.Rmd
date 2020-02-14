@@ -1,10 +1,8 @@
 ---
-title: "Report"
-author: "Qi Yuchen"
-date: "2020/2/11"
+title: "P8160 Project 1: Simulation Study for Variable Selection Methods"
+author: "Ngoc Duong, Crystal Li, Yuchen Qi"
 output:
   pdf_document: default
-  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -36,9 +34,16 @@ scale_fill_discrete = scale_fill_viridis_d
 theme_set(theme_minimal() + theme(legend.position = "bottom"))
 ```
 
+# Introduction
+
+Variables  selection methods are always trying to balance between model fitness and model complexity in the high-dimensional setting. And in application of traditional variables selection methods, they often struggle with identifying weak signals. Some signals are weak but they are still of importance to the true model.
+
+
 # Objectives
 
-In this project, we attempt to compare two automated methods of variable selection, namely stepwise forward method and LASSO regression, in their ability to correctly identify relevant signals and estimating how missing weak signals impact coefficients of strong signals. The two tasks are (1) how well each of the two methods in identifying weak and strong predictors, and (2) how missing “weak” predictors impacts the parameter estimations.
+In this project, we use simulations to compare two automated methods of variable selection, namely stepwise forward method and LASSO regression, in their ability to correctly identify relevant signals and estimating how missing weak signals impact coefficients of strong signals. Specifically, we aim to assess:  
+(1) How well each method performs in identifying weak and strong predictors (by calculating the percentages of strong and weak predictors being captured by each model), and  
+(2) How missing “weak” predictors impact the estimations of strong predictors (by calculating the bias and MSE between “true” strong coefficients and their estimates).
 
 
 # Statistical methods to be studied
@@ -57,8 +62,6 @@ where $\lambda$ is a tunning parameter. Here cross-validation (CV) is the chosen
 \end{description} 
 
 
-
-
 # Scenarios to be investigated
 
 First we give the definitions of "strong", "weak-but-correlated” and “weak-andindependent” signals.  
@@ -70,104 +73,62 @@ $$S_2=\{j: 0<|\beta_j|\le c\sqrt{log (p) / n},\mbox{ some } c>0, \mbox{corr}(X_j
 Definition of weak-and-independent signals  ---
 $$S_3=\{j: 0<|\beta_j|\le c\sqrt{log (p) / n},\mbox{ some } c>0, \mbox{corr}(X_j, X_j')= 0, \mbox{for all } j'\in S_1,  1\le j \le p\}$$
 
-To narrow the scope of our simulations, we set the proportions of strong signals, weak and independent signals, and weak but correlated signals to be 10%, 20%, 20% respectively, then we have 50% null predictors. The coefficients of strong signals follows $Uniform(5,10)$ which is sufficiently larger than the bound, and the coefficients of strong signals follows $Uniform(1/2bound,bound)$, where the bound is the upper bound for the value of weak signal coefficients by definition. The theshold multiplier c is set to be 1.
+To narrow the scope of our simulations, some variables are fixed.  
+  (1) We set the proportions of strong signals, weak and independent signals, and weak but correlated signals to be 10%, 20%, 20% respectively, then we have 50% null predictors.  
+  (2) The coefficients of strong signals follow Uniform(5, 10) which is sufficiently larger than the bound, and the coefficients of strong signals follow Uniform(1/2bound, bound), where the bound is threshold by definition.  
+  (3) The threshold multiplier c is set to be 1.
 
 Then, we vary the amount of total predictors from 10 to 100, with step to be 10. We also choose the correlation value to be 0.3, 0.5, 0.7. For each scenario, we generate 100 datasets. And in each dataset, the sample size is 200. 
 
 
 # Methods for generating data
 
-From the proportions of each type of signals and the number of total predictors, we get how many signals for each type. Then we generate a covariance matrix with the correlations set in this scenario following the definitions of each signal type. For each strong signal, there are two weak but correlated signals that are correlated to it. Whether the matrix is positive definite is also checked before passing it to the function `mvrnorm`, which produces random numbers from a multivariate normal distribution. Finally we generate the response Y as a linear combination of four types of signals and an error term. The code is shown below. 
+## Generating the predictor data matrix X
+
+From the proportions of each type of signals and the number of total predictors, we get how many signals for each type. Then we generate a covariance matrix with the correlations set in this scenario following the definitions of each signal type. Whether the matrix is positive definite is also checked before passing it to the R function `mvrnorm`, which produces random numbers from a multivariate normal distribution. 
+
+## Generating the response Y
+
+We generate the response Y as a linear combination of four types of signals and an error term. The distribution of Y is  
+$$Y\sim N(\boldsymbol X\boldsymbol \beta, \sigma^2)$$  
+where the variance is 1.
 
 
-```{r, eval=FALSE}
-sim_beta_strong = function(n_strong, coef_strong){
-  rep(coef_strong, n_strong) + runif(n_strong, min = 0, max = coef_strong)
-}
+# Performance Measures
+
+## Task 1: identify strong and weak predictors
+
+We wanted to investigate both variable selection methods’ ability to correctly identify strong and weak (both WAI and WBC) predictors and whether they do so consistently. Therefore, we measure their performances by calculating the percentages of captured strong, WBC and WAI predictors using these two methods as the number of parameters and correlation value changes.
+
+## Task 2; how missing “weak” predictors impacts the estimations of strong predictor
+
+In order to see the effect of missing weak predictors on the coefficient estimates of strong predictors, before fitting the models, we deleted a certain number of weak signals (from 1 to 20) from the original data. We then calculated the MSE and bias between “true” strong coefficients and their estimates, where  
+
+* bias
+
+$$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymbol\beta_j)$$
+
+* MSE
+
+$$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymbol\beta_j)^2$$
 
 
-sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, c = 1, cor = 0.3, coef_strong = 5) {
-  # Numbers of four signals
-  n_strong = as.integer(n_parameter * prop_strong) # strong
-  n_wbc = as.integer(n_parameter * prop_wbc) # weak but correlated
-  n_wai = as.integer(n_parameter * prop_wai) # weak and independent
-  n_null = n_parameter - n_strong - n_wbc - n_wai # null
-  
-  if (n_null < 0) {
-    return("Given parameters' proportions are not valid.")
-  }
-  
-  bound = c * sqrt(log(n_parameter) / n_sample) # threshold of weak/strong, the default is 0.14
-  if (coef_strong < bound) {
-    coef_strong = coef_strong + 2 * bound
-  }
-  
-  cor_matrix = diag(n_parameter)
-  
-  # add correlation
-  for (i in 1:n_strong) {
-    cor_matrix[i, (n_strong + n_wai + i)] = cor
-    cor_matrix[i, (n_strong + n_wai + n_wbc + 1 - i)] = cor
-    cor_matrix[(n_strong + n_wai + i), i] = cor
-    cor_matrix[(n_strong + n_wai + n_wbc + 1 - i), i] = cor
-  }
-  
-  
-  if (!is.positive.definite(cor_matrix)) {
-    return("The correlation matrix is not valid.")
-  }
-  
-  # simulate the data from multivariate normal
-  X = mvrnorm(n = n_sample, mu = rep(0, n_parameter), Sigma = cor_matrix) # var = 1, correlation = covariance
-  
-  beta = c(
-    sim_beta_strong(n_strong, coef_strong),
-    runif(min = bound/2, max = bound, n = n_wai), 
-    runif(min = bound/2, max = bound, n = n_wbc),
-    rep(0, n_null) 
-  )
-  
-  Y = 1 + X %*% beta + rnorm(n_sample)
-  data = as_tibble(data.frame(cbind(X, Y)))
-  
-  # Name the columns
-  cols = c(
-    str_c("strong", 1:n_strong, sep = "_"),
-    str_c("wai", 1:n_wai, sep = "_"),
-    str_c("wbc", 1:n_wbc, sep = "_"),
-    str_c("null", 1:n_null, sep = "_"),
-    "Y"
-   )
-   colnames(data) = cols
-   data = data %>% 
-     dplyr::select(Y, everything())
+# Simulation results
 
-  list(beta = beta, 
-       correlation = cor,
-       n_parameter = n_parameter,
-       prop_strong = prop_strong,
-       prop_wbc = prop_wbc, 
-       prop_wai = prop_wbc,
-       n_strong = n_strong,
-       n_wai = n_wai,
-       n_wbc = n_wbc,
-       data = data
-       )
-  
-}
+
+
+
+
+
+# Figures
+
+```{r echo=FALSE, out.width='100%', fig.cap="Percent of captured Signals"}
+knitr::include_graphics('F1.png')
 ```
-# Performance Measure
 
-Task 1:
-We investigate the performance of two methods in identifying the weak signals by looking at the percentage of two types of weak signals (WBC and WAI) detected in the fitted models. The ability is explored in several scenarios -- we vary the correlation(0.3, 0.5, 0.7 respectively) and the total number of pre-set parameters(from 10 to 100). And put the result together to see how correlation intensity and total number of parameters have effect on capturing weak signals. And then we compare the results to see if there is any interesting difference in two methods.
 
-Task 2 :
-Weak signals are weak but they are still of importance to the true model.  Therefore we are going to investigate how missing weak signals will influence the strong signals by looking into the coefficient MSE of strong signals. Before fitting the models, we delete the certain number of weak signals (from 1 to 20) to construct new datasets, and calculate the MSE based off the simulated coefficients and fitted coefficients of all strong signals. The task 2 is under the scenario where the total number of parameters is 50, and correlation is set to 0.3. We explore if there is any interesting trend in MSE of all strong signals against the number of missing weak signals. Then we compare the curve generated by two methods.
 
-# Results
-Task 1:
-For LASSO, when correlation is fixed, percentage of weak signals goes up when increasing the total number of parameters which is pre specified by us. A bigger proportion of WBC is captured in the model for most of time.  However, as correlation increases, especially when correlation is raised to 0.7, as seen in the figure below
-the performance of the detection of WBC is getting worse. The ability of capturing the WBC is even getting lower than WAI as the total number of parameters increase in the setting of correlation of 0.7. On the contrary, the performance of identifying the WAI is improved slightly when the correlation is raised to 0.7.
 
-Task 2:
-As seen in the figure, as the increase in the number of missing weak signals, the MSE of all strong signals goes up. Especially when the number of missing parameters increases from 1 to 10, MSE of strong signals increases rapidly. And the effect on strong signals is weakened when the number of missing weak signals is greater than 10. 
+# Code
+
+The gitbub link is https://github.com/qi-yuchen/Advancd_Computing_Project_1.
