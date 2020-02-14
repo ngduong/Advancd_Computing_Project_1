@@ -118,6 +118,30 @@ $$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymb
 
 
 
+
+
+# Figures
+
+```{r, out.width = "300px", fig.align="center", echo = FALSE, fig.cap = "Percent of WBC predictors detected as a function of p and c with forward selection" }
+knitr::include_graphics("./img/stepwise.p.png")
+```
+
+```{r, out.width = "300px", fig.align="center", echo = FALSE, fig.cap = "Detection of WAI predictors increases greatly with higher c" }
+knitr::include_graphics("./img/violin.wai.png")
+```
+
+```{r, out.width = "300px", fig.align="center", echo = FALSE, fig.cap = "Detection of WBC predictors increases with c, but still maintains a wide distribution across simulations" }
+knitr::include_graphics("./img/violin.wbc.png")
+```
+
+```{r, out.width = "400px", fig.align="center", echo = FALSE, fig.cap = "Accuracy decreases more in forward selection when the strong predictor is correlated with weak predictors, but vice-versa when it is not" }
+knitr::include_graphics("./img/mse.sidebyside.png")
+```
+
+
+
+# Code
+
 ```{r, eval=FALSE}
 sim_beta_strong = function(n_strong, coef_strong){
   rep(coef_strong, n_strong) + runif(n_strong, min = 0, max = coef_strong)
