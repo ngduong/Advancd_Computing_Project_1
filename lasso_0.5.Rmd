@@ -185,10 +185,10 @@ for (i in 1:10){
     n_wai = length(name[name == 'wai'])
     n_wbc = length(name[name == 'wbc'])
     n_null = length(name[name == 'null'])
-    prop_strong = round(n_strong/n_parameter_selected,digits=2)
-    prop_wai = round(n_wai/n_parameter_selected,digits =2)
-    prop_wbc = round(n_wbc/n_parameter_selected, digits =2)
-    prop_null = round(n_null/n_parameter_selected, digits =2)
+    prop_strong = round(n_strong/i,digits=2)
+    prop_wai = round(n_wai/(2*i),digits =2)
+    prop_wbc = round(n_wbc/(2*i), digits =2)
+    prop_null = round(n_null/(5*i), digits =2)
     df[(i-1)*100+j,]= c(n_parameter_total,n_parameter_selected,
                        prop_strong,prop_wai,prop_wbc,prop_null)
   }
@@ -200,15 +200,21 @@ for (i in 1:10){
 #plot the proportion of each signals 
 df_0.5 = df %>%
   group_by(n_parameter_total) %>%
-  mutate(wai = mean(prop_wai),
-         wbc= mean(prop_wbc),
+  summarize(strong_prfm = mean(prop_strong),
+         wai_prfm = mean(prop_wai),
+         wbc_prfm = mean(prop_wbc), 
+         null_prfm = mean(prop_null),
          corr = 0.5)
 df_0.5 %>% 
-  ggplot(aes(x = n_parameter_total))+
- geom_point(aes(y=(wai)*100, color="prop_wai")) + 
- geom_point(aes(y=(wbc)*100, color="prop_wbc")) + 
-  geom_line(aes(y=(wai)*100, color="prop_wai")) + 
-  geom_line(aes(y=(wbc)*100, color="prop_wbc")) + 
+     ggplot(aes(x = n_parameter_total))+
+  geom_point(aes(y=(strong_prfm)*100, color="prop_strong")) +
+ geom_point(aes(y=(wai_prfm)*100, color="prop_wai")) + 
+ geom_point(aes(y=(wbc_prfm)*100, color="prop_wbc")) +
+  geom_point(aes(y=(null_prfm)*100, color="prop_null")) + 
+  geom_line(aes(y=(strong_prfm)*100, color="prop_strong")) +
+  geom_line(aes(y=(wai_prfm)*100, color="prop_wai")) + 
+  geom_line(aes(y=(wbc_prfm)*100, color="prop_wbc")) + 
+  geom_line(aes(y=(null_prfm)*100, color="prop_null")) + 
  labs(title = "Percent of weak signals included in the LASSO  model(corr = 0.5)",
        y = "Percent of weak signals included in the model (%)",
        x = "Number of (pre-set) total parameters") +  
@@ -219,7 +225,7 @@ df_0.5 %>%
                        face='bold'), 
           legend.position = "bottom") +
   scale_x_discrete(limits=c( "prop_wai", "prop_wbc")) + 
-  scale_color_discrete(name = "Signal Type", labels = c("WAI", "WBC")) 
+  scale_color_discrete(name = "Signal Type", labels = c("Strong","WAI", "WBC","Null")) 
 ```
 
 ```{r}
