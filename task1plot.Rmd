@@ -7,16 +7,15 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 library("rmarkdown")
 library(ggplot2)
-
+library(patchwork)
 ```
 
 ```{r}
 df = rbind(df_0.3,df_0.5,df_0.7)
-
 ```
 
 ```{r}
-df %>% ggplot(aes(x = n_parameter_total))+
+p2 = df %>% ggplot(aes(x = n_parameter_total))+
  geom_point(aes(y=strong_prfm*100, color="prop_strong")) +
  geom_point(aes(y=wai_prfm*100, color="prop_wai")) + 
  geom_point(aes(y=wbc_prfm*100, color="prop_wbc")) + 
@@ -25,7 +24,7 @@ df %>% ggplot(aes(x = n_parameter_total))+
   geom_line(aes(y=wai_prfm*100, color="prop_wai")) + 
   geom_line(aes(y=wbc_prfm*100, color="prop_wbc")) + 
   geom_line(aes(y=null_prfm*100, color="prop_null")) + 
- labs(title = "Percent of each type of signal included in LASSO model",
+ labs(title = "LASSO",
        y = "Percent of signals included in the model (%)",
        x = "Number of (pre-set) total parameters") +  
   theme_bw() + 
@@ -34,7 +33,7 @@ df %>% ggplot(aes(x = n_parameter_total))+
                        size=12, 
                        face='bold'), 
           legend.position = "bottom") +
-  scale_color_discrete(name = "Signal Type", labels = c( "Null","Strong" ,"WAI", "WBC"))  +
+  scale_color_discrete(name = "Type", labels = c( "Null","Strong" ,"WAI", "WBC"))  +
      facet_grid(~corr)
 
 ```
@@ -56,5 +55,9 @@ plot_lasso11 = df %>%
                        face='bold'), 
           legend.position = "bottom") +
   scale_color_discrete(name = "Signal Type", labels = c( "WAI", "WBC"))
+```
+
+```{r}
+p1+p2
 ```
 
