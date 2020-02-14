@@ -12,36 +12,49 @@ library(ggplot2)
 
 ```{r}
 df = rbind(df_0.3,df_0.5,df_0.7)
-df %>% 
-    ggplot(aes(x = n_parameter_total))+
- geom_point(aes(y=(wai)*100, color="prop_wai")) + 
- geom_point(aes(y=(wbc)*100, color="prop_wbc")) + 
-  geom_line(aes(y=(wai)*100, color="prop_wai")) + 
-  geom_line(aes(y=(wbc)*100, color="prop_wbc")) + 
- labs(title = "Percent of weak signals included in the LASSO  model",
-       y = "Percent of weak signals included in the model (%)",
-       x = "Number of (pre-set) total parameters") +
-  facet_grid(~corr)+
+
+```
+
+```{r}
+df %>% ggplot(aes(x = n_parameter_total))+
+ geom_point(aes(y=strong_prfm*100, color="prop_strong")) +
+ geom_point(aes(y=wai_prfm*100, color="prop_wai")) + 
+ geom_point(aes(y=wbc_prfm*100, color="prop_wbc")) + 
+ geom_point(aes(y=null_prfm*100, color="prop_null")) + 
+  geom_line(aes(y=strong_prfm*100, color="prop_strong")) +
+  geom_line(aes(y=wai_prfm*100, color="prop_wai")) + 
+  geom_line(aes(y=wbc_prfm*100, color="prop_wbc")) + 
+  geom_line(aes(y=null_prfm*100, color="prop_null")) + 
+ labs(title = "Percent of each type of signal included in LASSO model",
+       y = "Percent of signals included in the model (%)",
+       x = "Number of (pre-set) total parameters") +  
   theme_bw() + 
   theme(plot.title = 
           element_text(hjust = 0.5, 
                        size=12, 
                        face='bold'), 
           legend.position = "bottom") +
-  scale_x_discrete(limits=c( "prop_wai", "prop_wbc")) + 
-  scale_color_discrete(name = "Signal Type", labels = c("WAI", "WBC")) 
+  scale_color_discrete(name = "Signal Type", labels = c( "Null","Strong" ,"WAI", "WBC"))  +
+     facet_grid(~corr)
+
 ```
+
 ```{r}
-df %>% 
+plot_lasso11 = df %>% 
   ggplot(aes()) +
   geom_density(aes(x = prop_wbc, color = "WBC")) + 
   geom_density(aes(x=prop_wai, color = "WAI")) +
   facet_grid(rows = vars(corr), cols = vars(n_parameter_total)) +
   theme(legend.title=element_blank())+
-  labs(title = "Distribution of Weak Signals Identified by LASSO Model(corr = 0.3)",
+  labs(title = "Distribution of Weak Signals Identified by LASSO Model",
        x = "Percent of weak signals included in the model (%)",
        y = "Density") +  
    theme_bw()+
+  theme(plot.title = 
+          element_text(hjust = 0.5, 
+                       size=12, 
+                       face='bold'), 
+          legend.position = "bottom") +
   scale_color_discrete(name = "Signal Type", labels = c( "WAI", "WBC"))
 ```
 
