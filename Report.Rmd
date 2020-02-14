@@ -78,8 +78,17 @@ To narrow the scope of our simulations, some variables are fixed.
   (2) The coefficients of strong signals follow Uniform(5, 10) which is sufficiently larger than the bound, and the coefficients of strong signals follow Uniform(1/2bound, bound), where the bound is threshold by definition.  
   (3) The threshold multiplier c is set to be 1.
 
-Then, we vary the amount of total predictors from 10 to 100, with step to be 10. We also choose the correlation value to be 0.3, 0.5, 0.7. For each scenario, we generate 100 datasets. And in each dataset, the sample size is 200. 
+## Task 1
 
+* Case 1: we let the number of parameters vary from 10 to 100, with step size of 10 (low-dimension to high-dimension while still satisfying our n>p condition). In addition, we varied the correlation between the strong predictors and WBC predictors at 0.3, 0.5, and 0.7. The sample size is fixed at 100.
+Scenario 2
+
+* Case 2: e inspected both methods’ performances by letting the number of parameters larger than sample size. We let p vary at 100, 150, and 200, and the correlation between strong predictors and WBC predictors be 0.3 and 0.7. Our sample size is fixed at 90.
+
+## Task 2
+
+Here, we fixed the sample size at 100, the total number of parameters at 50. Our correlation coefficient is set to vary at 0.3 and 0.7.
+ 
 
 # Methods for generating data
 
@@ -120,7 +129,6 @@ $$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymb
 
 
 
-# Figures
 
 ```{r echo=FALSE, out.width='100%', fig.cap="Percent of captured Signals"}
 knitr::include_graphics('F1.png')
