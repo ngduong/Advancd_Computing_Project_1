@@ -36,7 +36,7 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
 # Introduction
 
-Variables  selection methods are always trying to balance between model fitness and model complexity in the high-dimensional setting. And in application of traditional variables selection methods, they often struggle with identifying weak signals. Some signals are weak but they are still of importance to the true model.
+Variables selection methods are popular and highly useful in analyzing high-dimensional data, since they offer a solution to obtaining a statistical model through an automated optimization process. They, however, need to strike a balance between goodness of fit and model complexity to arrive at a useful model. Weak signals, having small but non-zero coefficients, could still be important in providing information about the underlying truth. Traditional variable selection methods often struggle with identifying weak signals, and their impact on the strong ones.
 
 
 # Objectives
@@ -80,14 +80,13 @@ To narrow the scope of our simulations, some variables are fixed.
 
 ## Task 1
 
-* Case 1: we let the number of parameters vary from 10 to 100, with step size of 10 (low-dimension to high-dimension while still satisfying our n>p condition). In addition, we varied the correlation between the strong predictors and WBC predictors at 0.3, 0.5, and 0.7. The sample size is fixed at 100.
-Scenario 2
+* Case 1: we let the number of parameters vary from 10 to 100, with step size of 10 (low-dimension to high-dimension while still satisfying our n>p condition). In addition, we varied the correlation between the strong predictors and WBC predictors at 0.3, 0.5, and 0.7. The sample size is fixed at 200.
 
-* Case 2: e inspected both methods’ performances by letting the number of parameters larger than sample size. We let p vary at 100, 150, and 200, and the correlation between strong predictors and WBC predictors be 0.3 and 0.7. Our sample size is fixed at 90.
+* Case 2: we inspected both methods’ performances by letting the number of parameters larger than sample size. We let p vary at 100, 150, and 200, and the correlation between strong predictors and WBC predictors be 0.3 and 0.7. Our sample size is fixed at 90.
 
 ## Task 2
 
-Here, we fixed the sample size at 100, the total number of parameters at 50. Our correlation coefficient is set to vary at 0.3 and 0.7.
+Here, we fixed the sample size at 100, the total number of parameters at 50. Our correlation coefficient is set to be 0.3.
  
 
 # Methods for generating data
@@ -122,21 +121,60 @@ $$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymb
 $$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymbol\beta_j)^2$$
 
 
-# Simulation results
+# Simulation results and discussion
+
+## Task 1
+
+### Case 1
+
+Both methods captured 100% of the strong predictors and the least percentage of null signals in all simulations. Adjusting for correlation, as the number of parameters increased, the proportion of captured weak predictors also increased.
+
+We observed that LASSO’s ability to capture weak signals is more sensitive to the number of parameters than stepwise forward. We also observed that stepwise forward selected a higher proportion of WAI signals compared to WBC signals for low-medium correlations (0.3 and 0.5), while the LASSO selected more WBC signals. However, when there is high correlation (0.7), both methods’ abilities to capture WBC signals significantly decreased (Figure 1). This is a reasonable result, since WBC are highly correlated with strong signals; thus, once strong signals have been selected, less information is contained in WBC signals, making them less likely to be picked. In contrast, the proportion of WAI signals correctly captured was insensitive to an increase in correlation (Figure 1). This is due to the fact that WAI signals are independent of correlations.
+
+### Case 2
+
+We observed that stepwise forward performed less well in selecting strong signals when dimensionality is high (specifically when p>>n). In fact, the procedure almost always selected 90 parameters, which is also the sample size, while the LASSO gives a sparser solution (Figure 2). Meanwhile, the LASSO picked 100% of the strong signals (Figure 3), but given highly correlated variables, LASSO tends to pick a few of them and shrinks the rest to zero (Zou and Hastie, 2005). This explains why when correlation was 0.7, the LASSO correctly captured a lower percentage of WBC variables than stepwise forward, and compared to when correlation was 0.3 (Figure 3).
+
+Overall, for low-to-medium dimensional data, forward selection tends to perform well and more consistently, but the LASSO outperforms forward selection in capturing relevant strong signals and gives a sparse solution in high-dimensional settings.
+
+## Task 2
+
+In general, stepwise performs better in estimating the coefficients of strong signals (Figure 4). Since we removed the WBC signals first, the observed effect of missing the first 10 signals on the strong signals’ MSE was caused by removal of WBC signals. We noticed that as the number of missing WBC signals increased, both the MSE and bias magnitude of strong signals went up (Figure 4 and 5). Furthermore, removing WAI signals (signals 11 to 20) did not have any significant effect on the MSE or bias magnitude of strong signals (Figure 4 and 5). However, overall, stepwise forward seemed to perform better in estimating the coefficients of strong signals in our scenario. We hypothesize that since the LASSO (performing regularization) reduces dimensionality of the data, and the coefficients are estimated in a lower dimensional data, this may cause a high bias/MSE error. In addition, given certain specifications of correlations between predictors, and high SNR values (which applies to our setting), the LASSO estimators could introduce bias and inaccuracy compared to forward stepwise selection (Hastie et al. 2017).
+
+Overall, stepwise forward does a better job at estimating strong signals’ coefficients  in this scenario.
 
 
+# References
 
+1. Hastie T., Tibshirani R., Tibshirani R. J. 2017. Extended comparisons of best subset selection, forward stepwise selection, and the lasso. arXiv preprint arXiv: 1707.08692
 
-
-
-
-```{r echo=FALSE, out.width='100%', fig.cap="Percent of captured Signals"}
-knitr::include_graphics('F1.png')
-```
-
-
+2. Zou H., Hastie, T. 2005. Regularization and Variable Selection via the Elastic Net. Journal of the Royal Statistical Society. Series B (Statistical Methodology). 67(2): 301-320.
 
 
 # Code
 
 The gitbub link is https://github.com/qi-yuchen/Advancd_Computing_Project_1.
+
+
+```{r echo=FALSE, out.width='100%', fig.cap="Percent of each predictor type detected"}
+knitr::include_graphics('F1.png')
+```
+
+```{r echo=FALSE, out.width='100%', fig.cap="Number of parameters captured"}
+knitr::include_graphics('Rplot07.png')
+```
+
+```{r echo=FALSE, out.width='100%', fig.cap="Percent of signals detected"}
+knitr::include_graphics('Rplot08.png')
+```
+
+```{r echo=FALSE, out.width='100%', fig.cap="Bias"}
+knitr::include_graphics('Rplot09.png')
+```
+
+```{r echo=FALSE, out.width='100%', fig.cap="MSE"}
+knitr::include_graphics('Rplot10.png')
+```
+
+
+
