@@ -11,7 +11,7 @@ library(matrixcalc)
 library(pracma)
 library(glmnet)
 library(dplyr)
-
+library(patchwork)
 library(ggplot2)
 
 knitr::opts_chunk$set(
@@ -116,25 +116,17 @@ sim_data = function(n_sample = 200, n_parameter = 50, prop_strong = 0.1, prop_wb
        n_wbc = n_wbc,
        data = data
        )
-  
 }
-
-
-
 ```
 
 
 # Vary the amount of n_parameter 10, 20, ..., 100 for prop_strong = 0.1, prop_wbc = 0.2, prop_wai = 0.2, 100 samples for each, and we vary corr values 0.3, 0.5, 0.7
 
 ```{r}
-
-  data_delete = vector("list", length = 100)
-  
-  for (j in 1:100) {
+data_delete = vector("list", length = 100)
+    for (j in 1:100) {
   data_delete[[j]] =  sim_data(n_parameter = 50, cor = 0.3)
-  }
-  
-
+}
 ```
 
 ```{r}
@@ -155,7 +147,7 @@ for (i in 1:100){
   output = vector("list")
   
   for (j in 1:20){
-    data = data_delete[[i]][[10]]
+    data = data_delete[[i]][[10]] 
     output[[j]] = data[-c(7:(6+j))]
   }
   data_new[[i]] = output
@@ -179,16 +171,15 @@ for (i in 1:100) {
     # one standard-error rule
     param.best <- fit.lasso$glmnet.fit$beta[, fit.lasso$lambda==fit.lasso$lambda.1se]
     output_para[[j]] = param.best[param.best != 0]
-   
-  }
-  param_new[[i]] = output_para
 
-}
+  param_new[[i]] = output_para
+  }}
+
 ```
 
 ```{r}
 # extract the fitted new strong signals' coeff in a list
-fitted_coef = vector('list', length = 100)
+fitted_coef = vector('list', length = 20)
 for (i in 1:100){
   output_coef2 = vector('list', length = 20)
   for (j in 1:20){
@@ -205,40 +196,61 @@ for (i in 1:100){
 
 ```{r}
 #calculate the MSE for each group
-mse_df = data.frame(matrix (ncol = 0, nrow = 20))
+mse_df_lasso = data.frame(matrix (ncol = 0, nrow = 100))
 for (i in 1:100){
-  mse_list2 = data.frame(matrix (ncol = 0, nrow = 20))
+  mse_list = data.frame(matrix (ncol = 0, nrow = 20))
   for (j in 1:20){
-    MSE_col = as.vector((true_coef[[i]] - fitted_coef[[i]][[j]])^2)
-    mse_list2 = cbind(mse_list2,MSE_col)
-    names(mse_list2)[j] = j
+    mse_col = as.vector(mean(true_coef[[i]]-fitted_coef[[i]][[j]])^2)
+    mse_list = cbind(mse_list,mse_col)
+    names(mse_list)[j] = j
   }
-  
-  mse_df =cbind(mse_df,mse_list2)
+  mse_df_lasso =cbind(mse_df_lasso,mse_list)
 }
 
-
+bias_df_lasso = data.frame(matrix (ncol = 0, nrow = 100))
+for (i in 1:100){
+  bias_list = data.frame(matrix (ncol = 0, nrow = 20))
+  for (j in 1:20){
+    bias_col = as.vector(true_coef[[i]]-fitted_coef[[i]][[j]])
+    bias_list = cbind(bias_list,bias_col)
+    names(bias_list)[j] = j
+  }
+  bias_df_lasso =cbind(bias_df_lasso,bias_list)
+}
 ```
 
+Visualize MSE for the Lasso
 ```{r}
-df = mse_df %>% 
+mse_df_lasso_test = mse_df_lasso %>% 
   pivot_longer(
     everything(),
     names_to = "n_missing",
-    values_to =  "MSE"
-    
-  ) %>% 
-  group_by(n_missing) %>%
-  summarise(mean_mse = mean(MSE)) %>% 
-  mutate(n_missing = as.numeric(n_missing)) 
-df %>% 
-  ggplot(aes(x = n_missing, y = mean_mse))+
-  geom_point(aes(x = n_missing, y = mean_mse))+
-  geom_smooth(method = "loess", se = T, stat = "smooth", formula = y~x)+
+    values_to = "mse") %>% 
+  dplyr::select(mse, n_missing) %>% 
+  mutate(n_missing = as.numeric(n_missing)) %>% 
+  group_by(n_missing) %>% 
+  summarise(mean = mean(mse)) %>% 
+  mutate(measure = "mse") 
+
+bias_df_lasso_test = bias_df_lasso %>% 
+  pivot_longer(
+    everything(),
+    names_to = "n_missing",
+    values_to = "bias") %>% 
+  dplyr::select(bias, n_missing) %>% 
+  mutate(n_missing = as.numeric(n_missing)) %>% 
+  group_by(n_missing) %>% 
+  summarise(mean = mean(bias)) %>% 
+  mutate(measure = "bias") 
+
+lasso_task2_data = rbind(mse_df_lasso_test, bias_df_lasso_test) %>% mutate(type = "LASSO")
+```
+
+lasso_task2_data %>% 
+  ggplot(aes(x = n_missing, y = mean, group = measure))+
+  geom_point(aes(linetype = measure), alpha = 0.3)+
+  geom_smooth(aes(linetype = measure),se = T, method = "loess",stat = "smooth", formula = y~x)
    labs(title = "Mean of MSE of strong signals against Number of missing weak signals",
        x = "Number of missing weak signals",
        y = "Mean of MSE of strong signals") +  
    theme_bw()
-
-```
-

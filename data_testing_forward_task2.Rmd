@@ -110,45 +110,54 @@ forward.aic.lm = function(df) {
 
 ```{r}
 # function to remove weak predictors one by one 
-delete_weak = function(data, n_wai_del = 0, n_wbc_del = 0) {
-  # definte which columns we should remove from WBC and WAI
-  del_col = c(
-    str_c("wai", 1:n_wai_del, sep = "_"),
-    str_c("wbc", 1:n_wbc_del, sep = "_")
-  )
-  data = data[, !(names(data) %in% del_col)]
-}
+mse_data = NULL
+n_sim = 30
+cor = c(0.3, 0.7)
 
-est_beta = NULL
-# Remove WAI and WBC oone by one
+for(n in n_sample){
+for(c in cor){
 for (i in 0:20) {
-  for (j in 1:70) {
-    if (i <= 10) {
-      n_wai_del = i
-      n_wbc_del = 0
-    } else {
-      n_wai_del = 10
-      n_wbc_del = i - 10
-    }
-     data = sim_data(n_sample = 200, n_parameter = 50)
- data_del = delete_weak(data$data, n_wai_del = n_wai_del, n_wbc_del = n_wbc_del)
+  for (j in 1:30) {
+     data_list = sim_data(n_sample = 100, n_parameter = 50, cor = c)
+     df = data_list$data %>% 
+       dplyr::select(Y, starts_with("strong"), 
+                     starts_with("wbc"), 
+                     starts_with("wai"), 
+                     everything())
+     df_delete = df[-c(7:(7+i))]
+     
  # create the forward model
-    forward_lm = forward.aic.lm(data_del)
-    beta_est = tidy(forward_lm) %>% filter(str_detect(term, "strong")) %>% .[1:2] %>% separate(term, into = c("term", "index"), sep = "_") %>% mutate(index = as.numeric(index)) %>% arrange(index) %>% pull(estimate) 
-    true_beta = data$beta[1:5]
-    true_beta_1 = true_beta[1]
-    beta_est_1 = beta_est[1]
+    forward_lm = forward.aic.lm(df_delete)
+    
+    beta_est = tidy(forward_lm) %>% 
+      filter(str_detect(term, "strong")) %>% 
+      .[1:2] %>% 
+      separate(term, 
+               into = c("term", "index"), 
+               sep = "_") %>% 
+      mutate(index = as.numeric(index)) %>% 
+      arrange(index) %>% 
+      pull(estimate) 
+    
+    true_beta = data_list$beta[1:5]
+
     # Gather coefficients from estimated model that did not see some weak predictors
-    est_beta= bind_rows(est_beta, c(mse_strong = mean((beta_est-true_beta)^2), mae_strong = mean(beta_est-true_beta), mse_strong_1 = mean((beta_est_1 - true_beta_1)^2), mae_strong_1 = mean(beta_est_1-true_beta_1), n.wbc.missing = n_wbc_del, n.wai.missing = n_wai_del))
-}}
+    
+    mse_data = rbind(mse_data, 
+                     tibble(mse_strong = mean((beta_est-true_beta)^2), 
+                       bias_strong = mean(beta_est-true_beta), 
+                       n_weak_missing = i, cor = c, n_sample = n))
+  }}}}
 ```
 
 ```{r}
-est_beta %>% mutate(n_weak_missing = n.wai.missing + n.wbc.missing) %>% 
-  group_by(n_weak_missing) %>% 
-  mutate(avg_mse_strong = mean(mse_strong)) %>% 
-  ggplot(aes(x = n_weak_missing, y = avg_mse_strong)) +
-  geom_point() +  geom_smooth(method = "loess", se = 2, stat = "smooth", formula = y~x)
+mse_data %>% 
+  group_by(n_weak_missing, cor) %>% 
+  summarise(mean_mse_strong = mean(mse_strong),
+            mean_bias_strong = mean(bias_strong)) %>% 
+  ggplot(aes(x = n_weak_missing, y = mean_mse_strong)) +
+  geom_point()+geom_smooth(method = "loess", se = 2, stat = "smooth", formula = y~x) +
+  facet_grid(~cor)
 ```
 
 
@@ -156,105 +165,200 @@ Crystal's codes adapt
 ```{r}
 data_delete = vector("list", length = 50)
 for (j in 1:50) {
-data_delete[[j]] =  sim_data(n_parameter = 50, cor = 0.3, n_sample = 200)
+data_delete[[j]] =  sim_data(n_parameter = 50, cor = 0.7)
 }
 ```
 
 ```{r}
 #get the coef of strong signals for the "true"
-true_coef = vector("list", length = 50)
+true_coef_forward = vector("list", length = 50)
 for (j in 1:50){
   coef= data_delete[[j]][[1]]
   strong = coef[1:5]
-  true_coef[[j]] = strong
+  true_coef_forward[[j]] = strong
 }
 ```
   
 ```{r}
 #delete weak signals before fitting the models and construct a new list of datasets
-data_new = vector("list")
+data_new_forward = vector("list")
 
 for (i in 1:50){
-  output = vector("list")
+  output_forward = vector("list")
   
   for (j in 1:20){
-    data = data_delete[[i]][[10]]
-    output[[j]] = data[-c(7:(6+j))]
+    data = data_delete[[i]][[10]] %>% dplyr::select(Y,starts_with("strong"), starts_with("wbc"),starts_with("wai"),everything())
+    output_forward[[j]] = data[-c(7:(6+j))]
   }
-  data_new[[i]] = output
+  data_new_forward[[i]] = output_forward
 }
 ```
 
 ```{r}
 #fit forward models using new deleted datasets
 #and store the new fitted param in a new list
-param_new = vector("list", length = 50)
+param_new_forward = vector("list", length = 50)
 for (i in 1:50) {
-  output_para = vector("list", length = 20)
+  output_para_forward = vector("list", length = 20)
   for (j in 1:20) {
-    data = data_new[[i]][[j]]
-    X = data %>% 
-    dplyr::select(-Y) %>% 
-    as.matrix()
-    Y= data$Y
-    # 10-fold CV using mean squared error
+    data = data_new_forward[[i]][[j]]
+    # forward selection
     forward_lm = forward.aic.lm(data)
+    #obtain coeffcients for forward model
     a = tidy(forward_lm) %>% filter(str_detect(term, "strong")) %>% .[1:2] %>% separate(term, into = c("term", "index"), sep = "_") %>% mutate(index = as.numeric(index)) %>% arrange(index) %>% pull(estimate) %>% as.data.frame()
     rownames(a) = c(str_c("strong", 1:5, sep = "_"))
-    output_para[[j]] = t(a) %>% data.frame()
+    output_para_forward[[j]] = data.frame(t(a))
   }
-  param_new[[i]] = output_para
+  param_new_forward[[i]] = output_para_forward
 }
 ```
 
 ```{r}
 # extract the fitted new strong signals' coeff in a list
-fitted_coef = vector('list', length = 50)
+fitted_coef_forward = vector('list', length = 20)
 for (i in 1:50){
-  output_coef2 = vector('list', length = 20)
+  output_coef_forward = vector('list', length = 20)
   for (j in 1:20){
-    p = unlist(param_new[[i]][j]) 
-    pnames2 = strsplit(names(p), split = '_')
+    p = unlist(param_new_forward[[i]][j]) 
+    pnames = strsplit(names(p), split = '_')
     for (n in 1:length(p)){
-    names(p)[n] = pnames2[[n]][1]
+    names(p)[n] = pnames[[n]][1]
     }
-    output_coef2[[j]] = p[names(p)=='strong']
+    output_coef_forward[[j]] = p[names(p)=='strong']
   }
-  fitted_coef[[i]] = output_coef2
+  fitted_coef_forward[[i]] = output_coef_forward
 }
 ```
 
+MSE and bias data manipulate
 ```{r}
-mse_df = data.frame(matrix (ncol = 0, nrow = 20))
+#MSE data manipulate
+mse_df_forward = NULL
+mse_list_forward = NULL
+mse_df_forward = data.frame(matrix (ncol = 0, nrow = 20))
 for (i in 1:50){
-  mse_list2 = data.frame(matrix (ncol = 0, nrow = 20))
+  mse_list_forward = data.frame(matrix (ncol = 0, nrow = 20))
   for (j in 1:20){
-    MSE_col = as.vector((true_coef[[i]] - (fitted_coef[[i]][[j]] %>% as.vector()))^2)
-    mse_list2 = cbind(mse_list2,MSE_col)
-    names(mse_list2)[j] = j
+    mse_col_forward = mean((true_coef_forward[[i]] - as.vector(fitted_coef_forward[[i]][[j]]))^2)
+    mse_list_forward = cbind(mse_list_forward,mse_col_forward)
+    names(mse_list_forward)[j] = j
   }
-  mse_df =cbind(mse_df,mse_list2)
+  mse_df_forward =cbind(mse_df_forward,mse_list_forward)
+}
+
+#bias data manipulate
+bias_df_forward = NULL
+bias_list_forward = NULL
+bias_df_forward = data.frame(matrix(ncol = 0, nrow = 20))
+for (i in 1:50){
+  bias_list_forward = data.frame(matrix(ncol = 0, nrow = 20))
+  for (j in 1:20){
+    bias_col_forward = mean(true_coef_forward[[i]] - as.vector(fitted_coef_forward[[i]][[j]]))
+    bias_list_forward = cbind(bias_list_forward,bias_col_forward)
+    names(bias_list_forward)[j] = j
+  }
+  bias_df_forward =cbind(bias_df_forward, bias_list_forward)
 }
 ```
 
-
+Put data in right form to visualize 
 ```{r}
-df = mse_df %>% 
+mse_df_forward_test = mse_df_forward %>% 
   pivot_longer(
     everything(),
     names_to = "n_missing",
-    values_to =  "MSE"
-    
-  ) %>% 
-  group_by(n_missing) %>%
-  summarise(mean_mse = mean(MSE)) %>% 
-  mutate(n_missing = as.numeric(n_missing)) 
-df %>% 
-  ggplot(aes(x = n_missing, y = mean_mse))+
-  geom_point(aes(x = n_missing, y = mean_mse))+
-  geom_smooth(method = "loess", se = T, stat = "smooth", formula = y~x)+
-   labs(title = "Mean of MSE of strong signals against Number of missing weak signals",
-       x = "Number of missing weak signals",
-       y = "Mean of MSE of strong signals") +  
-   theme_bw()
+    values_to = "mse") %>% 
+  dplyr::select(mse, n_missing) %>% 
+  mutate(n_missing = as.numeric(n_missing)) %>% 
+  group_by(n_missing) %>% 
+  summarise(mean = mean(mse)) %>% 
+  mutate(measure = "mse") 
+
+bias_df_forward_test = bias_df_forward %>% 
+  pivot_longer(
+    everything(),
+    names_to = "n_missing",
+    values_to = "bias") %>% 
+  dplyr::select(bias, n_missing) %>% 
+  mutate(n_missing = as.numeric(n_missing)) %>% 
+  group_by(n_missing) %>% 
+  summarise(mean = mean(bias)) %>% 
+  mutate(measure = "bias")
+
+
+forward_task2_cor7 = rbind(mse_df_forward_test, bias_df_forward_test) %>% mutate(type = "Forward", cor = 0.7)
+
 ```
+
+```{r}
+forward_task2_cor3 = forward_task2_data %>% mutate(cor = 0.3)
+
+task2_data_cor = rbind(forward_task2_cor7, forward_task2_cor3)
+
+task2_data_cor %>% filter(measure == "mse") %>% 
+  group_by(n_missing, cor) %>% 
+  summarise(mean_mse_strong = mean(mean)) %>% 
+  ggplot(aes(x = n_missing, y = mean_mse_strong)) +
+  geom_point()+geom_smooth(method = "loess", se = 2, stat = "smooth", formula = y~x) +
+  facet_grid(~cor)
+
+task2_data_cor %>% filter(measure == "bias") %>% 
+  group_by(n_missing, cor) %>% 
+  summarise(mean_bias_strong = mean(mean)) %>% 
+  ggplot(aes(x = n_missing, y = mean_bias_strong)) +
+  geom_point()+geom_smooth(method = "loess", se = 2, stat = "smooth", formula = y~x) +
+  facet_grid(~cor)
+```
+
+Visualize!!
+```{r}
+final_data = rbind(forward_task2_data, lasso_task2_data)
+
+final_data %>% filter(measure == "bias") %>% 
+  ggplot(aes(x = n_missing, y = mean, group = type)) +
+  geom_point(aes(color = type)) +
+  geom_smooth(aes(color = type), method = "loess", se = T, formula = y~x) + theme_bw() + 
+  labs(title = "Average bias of strong signals against the number of missing weak signals") +
+  theme_bw() +
+  scale_y_continuous("Bias of strong signals") + 
+  scale_x_continuous("Number of missing weak signals") +
+  scale_colour_discrete("") + 
+  theme(legend.position = "bottom",
+      plot.title = 
+          element_text(hjust = 0.5, 
+                       size=12, 
+                       face='bold'))
+
+final_data %>% filter(measure == "mse") %>% 
+  ggplot(aes(x = n_missing, y = mean, group = type)) +
+  geom_point(aes(color = type)) +
+  geom_smooth(aes(color = type), method = "loess", se = T, formula = y~x) + theme_bw() + 
+  labs(title = "Average MSE of strong signals against the number of missing weak signals") +
+  theme_bw() +
+  scale_y_continuous("Average MSE and bias of strong signals") + 
+  scale_x_continuous("Number of missing weak signals") +
+  scale_colour_discrete("") + 
+  theme(legend.position = "bottom",
+      plot.title = 
+          element_text(hjust = 0.5, 
+                       size=12, 
+                       face='bold'))
+
+
+forward_task2_data %>% filter(measure == "bias") %>% 
+  ggplot(aes(x = n_missing, y = mean)) +
+  geom_point(aes()) +
+  geom_smooth(method = "loess", se = T, formula = y~x) + theme_bw() + 
+  labs(title = "Average bias of strong signals against the number of missing weak signals") +
+  theme_bw() +
+  scale_y_continuous("Bias of strong signals") + 
+  scale_x_continuous("Number of missing weak signals") +
+  scale_colour_discrete("") + 
+  theme(legend.position = "bottom",
+      plot.title = 
+          element_text(hjust = 0.5, 
+                       size=12, 
+                       face='bold'))
+```
+
+
