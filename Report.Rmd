@@ -36,7 +36,7 @@ theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
 # Introduction
 
-Variables  selection methods are always trying to balance between model fitness and model complexity in the high-dimensional setting. And in application of traditional variables selection methods, they often struggle with identifying weak signals. Some signals are weak but they are still of importance to the true model.
+Variables selection methods are popular and highly useful in analyzing high-dimensional data, since they offer a solution to obtaining a statistical model through an automated optimization process. They, however, need to strike a balance between goodness of fit and model complexity to arrive at a useful model. Weak signals, having small but non-zero coefficients, could still be important in providing information about the underlying truth. Traditional variable selection methods often struggle with identifying weak signals, and their impact on the strong ones.
 
 
 # Objectives
@@ -130,7 +130,6 @@ $$\frac{1}{p_{strong}}\sum_{j=1}^{p_{strong}}(\hat{\boldsymbol\beta_j}-\boldsymb
 Both methods captured 100% of the strong predictors and the least percentage of null signals in all simulations. Adjusting for correlation, as the number of parameters increased, the proportion of captured weak predictors also increased.
 
 We observed that LASSO’s ability to capture weak signals is more sensitive to the number of parameters than stepwise forward. We also observed that stepwise forward selected a higher proportion of WAI signals compared to WBC signals for low-medium correlations (0.3 and 0.5), while the LASSO selected more WBC signals. However, when there is high correlation (0.7), both methods’ abilities to capture WBC signals significantly decreased (Figure 1). This is a reasonable result, since WBC are highly correlated with strong signals; thus, once strong signals have been selected, less information is contained in WBC signals, making them less likely to be picked. In contrast, the proportion of WAI signals correctly captured was insensitive to an increase in correlation (Figure 1). This is due to the fact that WAI signals are independent of correlations.
-
 
 ### Case 2
 
